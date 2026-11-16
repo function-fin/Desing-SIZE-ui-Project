@@ -1,0 +1,725 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+if playerGui:FindFirstChild("ScreenInspectorPro") then
+    playerGui.ScreenInspectorPro:Destroy()
+end
+if CoreGui:FindFirstChild("ScreenInspectorPro") then
+    CoreGui.ScreenInspectorPro:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "ScreenInspectorPro"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 999999 -- Prioridade máxima para ficar acima de tudo
+
+-- Tenta injetar no CoreGui (acima do PlayerGui), com fallback seguro
+local success = pcall(function()
+    gui.Parent = CoreGui
+end)
+if not success then
+    gui.Parent = playerGui
+end
+
+-- // Estado Global
+local shapes = {}
+local selectedShape = nil
+local currentSize = 100
+local currentThickness = 3
+local dragLocked = false -- Estado para travar/frizar o arraste
+local visibilityState = {
+    Quadrado = true,
+    Circulo = true,
+    Retangulo = true
+}
+
+-- // Função Utilitária de Estilo
+local function applyCorner(obj, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius)
+    c.Parent = obj
+    return c
+end
+
+local function applyStroke(obj, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(255, 255, 255)
+    s.Thickness = thickness or 1.2
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = obj
+    return s
+end
+
+-- // Função Universal de Arrastar (Respeita o bloqueio dragLocked)
+local function makeDraggable(dragHandle, targetFrame, onSelectCallback)
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    dragHandle.InputBegan:Connect(function(input)
+        if dragLocked then return end -- Se estiver travado, ignora o toque de arrastar
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = targetFrame.Position
+            if onSelectCallback then onSelectCallback() end
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if not dragLocked and input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            targetFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- // Container Principal da Interface
+local uiContainer = Instance.new("Frame")
+uiContainer.Name = "MainUIContainer"
+uiContainer.Size = UDim2.new(1, 0, 1, 0)
+uiContainer.BackgroundTransparency = 1
+uiContainer.Parent = gui
+
+local shapesLayer = Instance.new("Frame")
+shapesLayer.Name = "ShapesLayer"
+shapesLayer.Size = UDim2.new(1, 0, 1, 0)
+shapesLayer.BackgroundTransparency = 1
+shapesLayer.Parent = gui
+
+-- // ==========================================
+-- // 1. BOTÃO EXTERNO ARRASTÁVEL (ABRIR/FECHAR)
+-- // ==========================================
+local toggleOpenBtn = Instance.new("TextButton")
+toggleOpenBtn.Name = "ExternalToggleBtn"
+toggleOpenBtn.Size = UDim2.new(0, 36, 0, 36)
+toggleOpenBtn.Position = UDim2.new(0, 140, 0, 12)
+toggleOpenBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+toggleOpenBtn.Text = "⌖"
+toggleOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleOpenBtn.Font = Enum.Font.GothamBold
+toggleOpenBtn.TextSize = 18
+toggleOpenBtn.ZIndex = 100
+toggleOpenBtn.Parent = gui
+applyCorner(toggleOpenBtn, 10)
+applyStroke(toggleOpenBtn, Color3.fromRGB(255, 255, 255), 1.5)
+
+makeDraggable(toggleOpenBtn, toggleOpenBtn)
+
+local isOpen = true
+toggleOpenBtn.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    uiContainer.Visible = isOpen
+end)
+
+-- // ==========================================
+-- // 2. PAINEL INFERIOR: INFORMAÇÕES (Compacto)
+-- // ==========================================
+local infoPanel = Instance.new("Frame")
+infoPanel.Name = "InfoSelectionPanel"
+infoPanel.Size = UDim2.new(0, 310, 0, 100)
+infoPanel.Position = UDim2.new(0, 15, 1, -115)
+infoPanel.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
+infoPanel.BackgroundTransparency = 0.05
+infoPanel.Parent = uiContainer
+applyCorner(infoPanel, 10)
+applyStroke(infoPanel, Color3.fromRGB(75, 75, 75), 1.2)
+
+makeDraggable(infoPanel, infoPanel)
+
+local infoTitle = Instance.new("TextLabel")
+infoTitle.Size = UDim2.new(1, -20, 0, 20)
+infoTitle.Position = UDim2.new(0, 12, 0, 8)
+infoTitle.BackgroundTransparency = 1
+infoTitle.Text = "Informações da Seleção"
+infoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+infoTitle.Font = Enum.Font.GothamBold
+infoTitle.TextSize = 12
+infoTitle.TextXAlignment = Enum.TextXAlignment.Left
+infoTitle.Parent = infoPanel
+
+-- Miniatura
+local previewBox = Instance.new("Frame")
+previewBox.Size = UDim2.new(0, 50, 0, 50)
+previewBox.Position = UDim2.new(0, 12, 0, 34)
+previewBox.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+previewBox.Parent = infoPanel
+local previewCorner = applyCorner(previewBox, 4)
+local previewStroke = applyStroke(previewBox, Color3.fromRGB(255, 255, 255), 1.5)
+
+-- Estatísticas
+local statsLabel = Instance.new("TextLabel")
+statsLabel.Size = UDim2.new(0, 125, 0, 60)
+statsLabel.Position = UDim2.new(0, 70, 0, 32)
+statsLabel.BackgroundTransparency = 1
+statsLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+statsLabel.Font = Enum.Font.GothamMedium
+statsLabel.TextSize = 10.5
+statsLabel.TextXAlignment = Enum.TextXAlignment.Left
+statsLabel.TextYAlignment = Enum.TextYAlignment.Top
+statsLabel.RichText = true
+statsLabel.Text = "Tipo: <b>Nenhum</b>\nPosição: 0, 0\nTamanho: 0, 0\nCentro: 0, 0"
+statsLabel.Parent = infoPanel
+
+-- Divisória
+local vLine = Instance.new("Frame")
+vLine.Size = UDim2.new(0, 1, 0, 56)
+vLine.Position = UDim2.new(0, 200, 0, 34)
+vLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+vLine.BorderSizePixel = 0
+vLine.Parent = infoPanel
+
+-- Status
+local statusTitle = Instance.new("TextLabel")
+statusTitle.Size = UDim2.new(0, 95, 0, 18)
+statusTitle.Position = UDim2.new(0, 208, 0, 34)
+statusTitle.BackgroundTransparency = 1
+statusTitle.Text = "Nenhuma Figura"
+statusTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusTitle.Font = Enum.Font.GothamBold
+statusTitle.TextSize = 11
+statusTitle.Parent = infoPanel
+
+local statusDesc = Instance.new("TextLabel")
+statusDesc.Size = UDim2.new(0, 95, 0, 38)
+statusDesc.Position = UDim2.new(0, 208, 0, 52)
+statusDesc.BackgroundTransparency = 1
+statusDesc.Text = "Clique ao lado para criar."
+statusDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+statusDesc.Font = Enum.Font.Gotham
+statusDesc.TextSize = 9.5
+statusDesc.TextWrapped = true
+statusDesc.TextXAlignment = Enum.TextXAlignment.Left
+statusDesc.TextYAlignment = Enum.TextYAlignment.Top
+statusDesc.Parent = infoPanel
+
+-- // ==========================================
+-- // 3. PAINEL DIREITO: SCREEN INSPECTOR (Compacto)
+-- // ==========================================
+local mainPanel = Instance.new("Frame")
+mainPanel.Name = "ScreenInspectorPanel"
+mainPanel.Size = UDim2.new(0, 215, 0, 298)
+mainPanel.Position = UDim2.new(1, -230, 0.5, -149)
+mainPanel.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
+mainPanel.BackgroundTransparency = 0.04
+mainPanel.Parent = uiContainer
+applyCorner(mainPanel, 12)
+applyStroke(mainPanel, Color3.fromRGB(75, 75, 75), 1.2)
+
+makeDraggable(mainPanel, mainPanel)
+
+local headerTitle = Instance.new("TextLabel")
+headerTitle.Size = UDim2.new(1, 0, 0, 28)
+headerTitle.Position = UDim2.new(0, 0, 0, 6)
+headerTitle.BackgroundTransparency = 1
+headerTitle.Text = "Screen Inspector"
+headerTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+headerTitle.Font = Enum.Font.GothamBold
+headerTitle.TextSize = 13.5
+headerTitle.Parent = mainPanel
+
+local subBox = Instance.new("Frame")
+subBox.Size = UDim2.new(1, -16, 0, 32)
+subBox.Position = UDim2.new(0, 8, 0, 34)
+subBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+subBox.Parent = mainPanel
+applyCorner(subBox, 6)
+
+local subText = Instance.new("TextLabel")
+subText.Size = UDim2.new(1, -10, 1, 0)
+subText.Position = UDim2.new(0, 5, 0, 0)
+subText.BackgroundTransparency = 1
+subText.Text = "Adicione figuras na tela para capturar coordenadas."
+subText.TextColor3 = Color3.fromRGB(200, 200, 200)
+subText.Font = Enum.Font.Gotham
+subText.TextSize = 9.5
+subText.TextWrapped = true
+subText.TextXAlignment = Enum.TextXAlignment.Left
+subText.Parent = subBox
+
+-- Ferramentas
+local toolsLabel = Instance.new("TextLabel")
+toolsLabel.Size = UDim2.new(1, -16, 0, 18)
+toolsLabel.Position = UDim2.new(0, 10, 0, 72)
+toolsLabel.BackgroundTransparency = 1
+toolsLabel.Text = "Ferramentas"
+toolsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+toolsLabel.Font = Enum.Font.GothamBold
+toolsLabel.TextSize = 11
+toolsLabel.TextXAlignment = Enum.TextXAlignment.Left
+toolsLabel.Parent = mainPanel
+
+local toolButtons = {}
+
+local function createToolCard(name, posX, shapeType)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 62, 0, 48)
+    btn.Position = UDim2.new(0, posX, 0, 92)
+    btn.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+    btn.Text = ""
+    btn.AutoButtonColor = false
+    btn.Parent = mainPanel
+    applyCorner(btn, 8)
+    local stroke = applyStroke(btn, Color3.fromRGB(70, 70, 70), 1.2)
+
+    local icon = Instance.new("Frame")
+    icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    icon.BorderSizePixel = 0
+    icon.Parent = btn
+
+    if shapeType == "Quadrado" then
+        icon.Size = UDim2.new(0, 15, 0, 15)
+        icon.Position = UDim2.new(0.5, -7.5, 0, 8)
+    elseif shapeType == "Circulo" then
+        icon.Size = UDim2.new(0, 15, 0, 15)
+        icon.Position = UDim2.new(0.5, -7.5, 0, 8)
+        applyCorner(icon, 99)
+    elseif shapeType == "Retangulo" then
+        icon.Size = UDim2.new(0, 22, 0, 11)
+        icon.Position = UDim2.new(0.5, -11, 0, 10)
+        icon.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+        applyStroke(icon, Color3.fromRGB(255, 255, 255), 1.5)
+    end
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 18)
+    lbl.Position = UDim2.new(0, 0, 1, -18)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = name
+    lbl.TextColor3 = Color3.fromRGB(230, 230, 230)
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 9.5
+    lbl.Parent = btn
+
+    toolButtons[shapeType] = stroke
+    return btn
+end
+
+local btnQuadrado = createToolCard("Quadrado", 10, "Quadrado")
+local btnCirculo = createToolCard("Círculo", 76, "Circulo")
+local btnRetangulo = createToolCard("Retângulo", 142, "Retangulo")
+
+-- Sliders de Controle
+local ctrlLabel = Instance.new("TextLabel")
+ctrlLabel.Size = UDim2.new(1, -16, 0, 18)
+ctrlLabel.Position = UDim2.new(0, 10, 0, 146)
+ctrlLabel.BackgroundTransparency = 1
+ctrlLabel.Text = "Controles"
+ctrlLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+ctrlLabel.Font = Enum.Font.GothamBold
+ctrlLabel.TextSize = 11
+ctrlLabel.TextXAlignment = Enum.TextXAlignment.Left
+ctrlLabel.Parent = mainPanel
+
+local sizeSliderUpdate, thickSliderUpdate
+
+local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChange)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 55, 0, 18)
+    lbl.Position = UDim2.new(0, 10, 0, posY)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText
+    lbl.TextColor3 = Color3.fromRGB(210, 210, 210)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 10.5
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = mainPanel
+
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(0, 85, 0, 3)
+    track.Position = UDim2.new(0, 68, 0, posY + 8)
+    track.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+    track.BorderSizePixel = 0
+    track.Parent = mainPanel
+    applyCorner(track, 3)
+
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+    applyCorner(fill, 3)
+
+    local knob = Instance.new("TextButton")
+    knob.Size = UDim2.new(0, 11, 0, 11)
+    knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -5.5, 0.5, -5.5)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.Text = ""
+    knob.Parent = track
+    applyCorner(knob, 99)
+
+    local valBox = Instance.new("TextLabel")
+    valBox.Size = UDim2.new(0, 32, 0, 18)
+    valBox.Position = UDim2.new(1, -38, 0, posY)
+    valBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    valBox.Text = tostring(defaultVal)
+    valBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    valBox.Font = Enum.Font.GothamBold
+    valBox.TextSize = 10
+    valBox.Parent = mainPanel
+    applyCorner(valBox, 4)
+    applyStroke(valBox, Color3.fromRGB(60, 60, 60), 1)
+
+    local function setVisual(val)
+        val = math.clamp(math.floor(val), minVal, maxVal)
+        local alpha = (val - minVal) / (maxVal - minVal)
+        fill.Size = UDim2.new(alpha, 0, 1, 0)
+        knob.Position = UDim2.new(alpha, -5.5, 0.5, -5.5)
+        valBox.Text = tostring(val)
+    end
+
+    local dragging = false
+    local function updateFromInput(input)
+        local relX = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        local val = math.floor(minVal + (maxVal - minVal) * relX)
+        setVisual(val)
+        onChange(val)
+    end
+
+    knob.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
+    end)
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateFromInput(input)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateFromInput(input)
+        end
+    end)
+
+    return setVisual
+end
+
+sizeSliderUpdate = createSlider("Tamanho:", 168, 20, 400, 100, function(val)
+    currentSize = val
+    if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
+        if selectedShape.Type == "Retangulo" then
+            local ratio = selectedShape.Frame.Size.Y.Offset / math.max(1, selectedShape.Frame.Size.X.Offset)
+            selectedShape.Frame.Size = UDim2.new(0, val, 0, math.max(20, math.floor(val * ratio)))
+        else
+            selectedShape.Frame.Size = UDim2.new(0, val, 0, val)
+        end
+    end
+end)
+
+thickSliderUpdate = createSlider("Espessura:", 192, 1, 15, 3, function(val)
+    currentThickness = val
+    if selectedShape and selectedShape.Stroke then
+        selectedShape.Stroke.Thickness = val
+    end
+end)
+
+-- Toggles (Mostrar Figuras e Bloquear Arraste)
+local function createToggleRow(text, posY, callback, initialState)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 130, 0, 18)
+    lbl.Position = UDim2.new(0, 10, 0, posY)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 10.5
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = mainPanel
+
+    local switch = Instance.new("TextButton")
+    switch.Size = UDim2.new(0, 32, 0, 16)
+    switch.Position = UDim2.new(1, -42, 0, posY + 1)
+    switch.BackgroundColor3 = initialState and Color3.fromRGB(245, 245, 245) or Color3.fromRGB(45, 45, 45)
+    switch.Text = ""
+    switch.Parent = mainPanel
+    applyCorner(switch, 99)
+    applyStroke(switch, Color3.fromRGB(255, 255, 255), 1)
+
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 12, 0, 12)
+    dot.Position = initialState and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6)
+    dot.BackgroundColor3 = initialState and Color3.fromRGB(15, 15, 15) or Color3.fromRGB(180, 180, 180)
+    dot.Parent = switch
+    applyCorner(dot, 99)
+
+    local active = initialState
+    switch.MouseButton1Click:Connect(function()
+        active = not active
+        switch.BackgroundColor3 = active and Color3.fromRGB(245, 245, 245) or Color3.fromRGB(45, 45, 45)
+        dot.BackgroundColor3 = active and Color3.fromRGB(15, 15, 15) or Color3.fromRGB(180, 180, 180)
+        dot.Position = active and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6)
+        callback(active)
+    end)
+end
+
+createToggleRow("Mostrar Quadrado", 218, function(active)
+    visibilityState["Quadrado"] = active
+    for _, s in ipairs(shapes) do
+        if s.Type == "Quadrado" and s.Frame then s.Frame.Visible = active end
+    end
+end, true)
+
+createToggleRow("Mostrar Círculo", 238, function(active)
+    visibilityState["Circulo"] = active
+    for _, s in ipairs(shapes) do
+        if s.Type == "Circulo" and s.Frame then s.Frame.Visible = active end
+    end
+end, true)
+
+createToggleRow("Mostrar Retângulo", 258, function(active)
+    visibilityState["Retangulo"] = active
+    for _, s in ipairs(shapes) do
+        if s.Type == "Retangulo" and s.Frame then s.Frame.Visible = active end
+    end
+end, true)
+
+-- Novo Toggle: Bloquear Arraste
+createToggleRow("Bloquear Arraste", 278, function(active)
+    dragLocked = active
+end, false)
+
+-- // ==========================================
+-- // 4. SISTEMA DE CRIAÇÃO E REDIMENSIONAMENTO
+-- // ==========================================
+local function selectShape(shapeData)
+    selectedShape = shapeData
+
+    for _, s in ipairs(shapes) do
+        if s.HandlesFolder then
+            s.HandlesFolder.Visible = (s == shapeData)
+        end
+    end
+
+    for t, stroke in pairs(toolButtons) do
+        if shapeData and t == shapeData.Type then
+            stroke.Color = Color3.fromRGB(255, 255, 255)
+            stroke.Thickness = 1.8
+        else
+            stroke.Color = Color3.fromRGB(70, 70, 70)
+            stroke.Thickness = 1.2
+        end
+    end
+
+    if shapeData then
+        previewCorner.CornerRadius = (shapeData.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
+        previewStroke.Thickness = shapeData.Stroke.Thickness
+        statusTitle.Text = "Figura Ativa!"
+        statusDesc.Text = "Arraste os cantos."
+        sizeSliderUpdate(shapeData.Frame.AbsoluteSize.X)
+        thickSliderUpdate(shapeData.Stroke.Thickness)
+    else
+        statusTitle.Text = "Nenhuma Figura"
+        statusDesc.Text = "Clique ao lado para criar."
+        statsLabel.Text = "Tipo: <b>Nenhum</b>\nPosição: 0, 0\nTamanho: 0, 0\nCentro: 0, 0"
+    end
+end
+
+local function createShape(shapeType)
+    local w, h = currentSize, currentSize
+    if shapeType == "Retangulo" then
+        w = math.max(120, currentSize)
+        h = 45
+    elseif shapeType == "Circulo" then
+        w = 90
+        h = 90
+    end
+
+    local frame = Instance.new("Frame")
+    frame.Name = "Shape_" .. shapeType
+    frame.Size = UDim2.new(0, w, 0, h)
+    frame.Position = UDim2.new(0.35, math.random(-20, 20), 0.35, math.random(-20, 20))
+    frame.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
+    frame.Visible = visibilityState[shapeType]
+    frame.Parent = shapesLayer
+
+    if shapeType == "Circulo" then
+        applyCorner(frame, 999)
+    end
+
+    local stroke = applyStroke(frame, Color3.fromRGB(255, 255, 255), currentThickness)
+
+    local topTag = Instance.new("TextLabel")
+    topTag.Size = UDim2.new(0, 60, 0, 16)
+    topTag.Position = UDim2.new(0.5, -30, 0, -22)
+    topTag.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    topTag.TextColor3 = Color3.fromRGB(255, 255, 255)
+    topTag.Font = Enum.Font.GothamBold
+    topTag.TextSize = 9.5
+    topTag.Parent = frame
+    applyCorner(topTag, 4)
+    applyStroke(topTag, Color3.fromRGB(80, 80, 80), 1)
+
+    local bottomTag = Instance.new("TextLabel")
+    bottomTag.Size = UDim2.new(0, 36, 0, 15)
+    bottomTag.Position = UDim2.new(0.5, -18, 1, 6)
+    bottomTag.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    bottomTag.TextColor3 = Color3.fromRGB(255, 255, 255)
+    bottomTag.Font = Enum.Font.GothamBold
+    bottomTag.TextSize = 9.5
+    bottomTag.Parent = frame
+    applyCorner(bottomTag, 4)
+
+    local leftTag = Instance.new("TextLabel")
+    leftTag.Size = UDim2.new(0, 32, 0, 15)
+    leftTag.Position = UDim2.new(0, -40, 0.5, -7.5)
+    leftTag.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    leftTag.TextColor3 = Color3.fromRGB(255, 255, 255)
+    leftTag.Font = Enum.Font.GothamBold
+    leftTag.TextSize = 9.5
+    leftTag.Visible = (shapeType ~= "Circulo")
+    leftTag.Parent = frame
+    applyCorner(leftTag, 4)
+
+    local handlesFolder = Instance.new("Folder")
+    handlesFolder.Name = "ResizeHandles"
+    handlesFolder.Parent = frame
+
+    local corners = {
+        {name = "TL", x = 0, y = 0, dx = -1, dy = -1},
+        {name = "TR", x = 1, y = 0, dx = 1,  dy = -1},
+        {name = "BL", x = 0, y = 1, dx = -1, dy = 1},
+        {name = "BR", x = 1, y = 1, dx = 1,  dy = 1},
+    }
+
+    for _, c in ipairs(corners) do
+        local handle = Instance.new("TextButton")
+        handle.Size = UDim2.new(0, 10, 0, 10)
+        handle.Position = UDim2.new(c.x, -5, c.y, -5)
+        handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        handle.Text = ""
+        handle.ZIndex = 10
+        handle.Parent = handlesFolder
+        applyStroke(handle, Color3.fromRGB(0, 0, 0), 1)
+
+        local resizing = false
+        local startMouse, startSize, startPos
+
+        handle.InputBegan:Connect(function(input)
+            if dragLocked then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                resizing = true
+                startMouse = input.Position
+                startSize = frame.Size
+                startPos = frame.Position
+            end
+        end)
+
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                resizing = false
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if not dragLocked and resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - startMouse
+                local newW = math.max(20, startSize.X.Offset + (delta.X * c.dx))
+                local newH = math.max(20, startSize.Y.Offset + (delta.Y * c.dy))
+
+                if shapeType == "Circulo" then
+                    newH = newW
+                end
+
+                local posX = startPos.X.Offset
+                local posY = startPos.Y.Offset
+
+                if c.dx == -1 then
+                    posX = startPos.X.Offset + (startSize.X.Offset - newW)
+                end
+                if c.dy == -1 then
+                    posY = startPos.Y.Offset + (startSize.Y.Offset - newH)
+                end
+
+                frame.Size = UDim2.new(0, newW, 0, newH)
+                frame.Position = UDim2.new(startPos.X.Scale, posX, startPos.Y.Scale, posY)
+            end
+        end)
+    end
+
+    local shapeData = {
+        Type = shapeType,
+        Frame = frame,
+        Stroke = stroke,
+        TopTag = topTag,
+        BottomTag = bottomTag,
+        LeftTag = leftTag,
+        HandlesFolder = handlesFolder
+    }
+
+    makeDraggable(frame, frame, function()
+        selectShape(shapeData)
+    end)
+
+    table.insert(shapes, shapeData)
+    selectShape(shapeData)
+end
+
+btnQuadrado.MouseButton1Click:Connect(function() createShape("Quadrado") end)
+btnCirculo.MouseButton1Click:Connect(function() createShape("Circulo") end)
+btnRetangulo.MouseButton1Click:Connect(function() createShape("Retangulo") end)
+
+-- // ==========================================
+-- // 5. LOOP DE ATUALIZAÇÃO
+-- // ==========================================
+RunService.RenderStepped:Connect(function()
+    for _, s in ipairs(shapes) do
+        if s.Frame and s.Frame.Parent then
+            local w = math.floor(s.Frame.AbsoluteSize.X)
+            local h = math.floor(s.Frame.AbsoluteSize.Y)
+
+            if s.Type == "Circulo" then
+                s.TopTag.Text = w .. " Ø"
+                s.BottomTag.Text = tostring(w)
+            else
+                s.TopTag.Text = w .. " x " .. h
+                s.BottomTag.Text = tostring(w)
+                s.LeftTag.Text = tostring(h)
+            end
+        end
+    end
+
+    if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
+        local pos = selectedShape.Frame.AbsolutePosition
+        local size = selectedShape.Frame.AbsoluteSize
+        local x, y = math.floor(pos.X), math.floor(pos.Y)
+        local w, h = math.floor(size.X), math.floor(size.Y)
+        local cx, cy = math.floor(x + w / 2), math.floor(y + h / 2)
+
+        local tipoNome = selectedShape.Type == "Circulo" and "Círculo" or (selectedShape.Type == "Retangulo" and "Retângulo" or "Quadrado")
+
+        statsLabel.Text = string.format(
+            "Tipo: <b>%s</b>\nPosição: %d, %d\nTamanho: %d, %d\nCentro: %d, %d",
+            tipoNome, x, y, w, h, cx, cy
+        )
+    end
+end)
