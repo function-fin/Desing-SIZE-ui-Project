@@ -1,6 +1,6 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
 -- // Documento de Correção: Precisão Matemática + Arraste Robusto + Tempo Real
--- // Botão externo centralizado | Tamanho 44x37
+-- // Botão externo fixado no Centro (-207, -213) | Tamanho 44x42
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -52,7 +52,6 @@ local function applyStroke(obj, color, t)
     return s
 end
 
--- // Função de arredondamento correta para Roblox
 local function round(n)
     return math.floor(n + 0.5)
 end
@@ -134,13 +133,13 @@ shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — CENTRO DA TELA | 44x37
+-- // BOTÃO EXTERNO — Fixado no Centro (-207, -213) | 44x42
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
-toggleOpenBtn.Size = UDim2.new(0, 44, 0, 37) 
+toggleOpenBtn.Size = UDim2.new(0, 44, 0, 42) 
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleOpenBtn.Position = UDim2.new(0.5, 0, 0.5, 0) -- Resetado para o centro exato da tela
+toggleOpenBtn.Position = UDim2.new(0.5, -207, 0.5, -213) 
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
