@@ -1,6 +1,6 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
 -- // Documento de Correção: Precisão Matemática + Arraste Robusto + Tempo Real
--- // Botão externo fixo em (-206, -220) | Tamanho 44x37
+-- // Botão externo centralizado | Tamanho 44x37
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -134,13 +134,13 @@ shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — Fixado (-206, -220) | 44x37
+-- // BOTÃO EXTERNO — CENTRO DA TELA | 44x37
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
 toggleOpenBtn.Size = UDim2.new(0, 44, 0, 37) 
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleOpenBtn.Position = UDim2.new(0.5, -206, 0.5, -220) 
+toggleOpenBtn.Position = UDim2.new(0.5, 0, 0.5, 0) -- Resetado para o centro exato da tela
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
