@@ -52,7 +52,12 @@ local function applyStroke(obj, color, t)
     return s
 end
 
--- // CAMADA DE ARRASTE ROBUSTA (Item 4 do Documento)
+-- // Função de arredondamento correta para Roblox
+local function round(n)
+    return math.floor(n + 0.5)
+end
+
+-- // CAMADA DE ARRASTE ROBUSTA
 local function makeDraggable(dragHandle, targetFrame)
     local dragging = false
     local dragStartPos = Vector2.new(0, 0)
@@ -73,7 +78,6 @@ local function makeDraggable(dragHandle, targetFrame)
         end
     end)
 
-    -- InputChanged Global (Não depende do dragInput do elemento)
     UserInputService.InputChanged:Connect(function(input)
         if dragging and not dragLocked then
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
@@ -87,29 +91,24 @@ local function makeDraggable(dragHandle, targetFrame)
     end)
 end
 
--- // FUNÇÃO DE COORDENADAS PRECISA (Itens 2 e 3 do Documento)
+-- // FUNÇÃO DE COORDENADAS PRECISA
 local function getShapeCoords(frame)
     local absPos = frame.AbsolutePosition
     local absSize = frame.AbsoluteSize
     local vp = workspace.CurrentCamera.ViewportSize
     
-    -- Centro absoluto da tela
     local cX = vp.X / 2
     local cY = vp.Y / 2
 
-    -- Dimensões reais (sem math.floor para não perder precisão)
     local w = absSize.X
     local h = absSize.Y
 
-    -- Posição relativa ao centro (Canto Superior Esquerdo)
     local relX = absPos.X - cX
     local relY = absPos.Y - cY
 
-    -- Centro Geométrico Relativo
     local cx = relX + (w / 2)
     local cy = relY + (h / 2)
 
-    -- Retorna valores com precisão decimal, arredondamento fica a cargo da exibição
     return relX, relY, w, h, cx, cy
 end
 
@@ -473,7 +472,6 @@ sizeSliderUpdate = createSlider("Tamanho:", 182, 20, 400, 100, function(val)
         else
             selectedShape.Frame.Size = UDim2.new(0, val, 0, val)
         end
-        -- Não precisa atualizar statsLabel aqui manualmente, o loop faz isso (Item 5)
     end
 end)
 
@@ -553,7 +551,6 @@ end
 local function selectShape(shapeData)
     selectedShape = shapeData
     showHandles(shapeData)
-    -- Não chama update manual, deixa o RenderStepped fazer a atualização contínua
 end
 
 local function deselectShape()
@@ -649,7 +646,7 @@ local function createShape(shapeType)
     frame.Visible = visibilityState[shapeType]
     frame.Active = true
     frame.Parent = shapesLayer
-    frame.ZIndex = 2 -- Figuras ficam acima do fundo mas abaixo dos painéis (ZIndex 50)
+    frame.ZIndex = 2
 
     if shapeType == "Circulo" then
         applyCorner(frame, 999)
@@ -771,12 +768,11 @@ btnCirculo.MouseButton1Click:Connect(function() createShape("Circulo") end)
 btnRetangulo.MouseButton1Click:Connect(function() createShape("Retangulo") end)
 
 -- // ==========================================
--- // LOOP — ATUALIZAÇÃO EM TEMPO REAL (Item 5)
+-- // LOOP — ATUALIZAÇÃO EM TEMPO REAL
 -- // ==========================================
 local lastStatsText = ""
 
 RunService.RenderStepped:Connect(function()
-    -- Atualiza tags visuais (dentro da própria figura)
     for _, s in ipairs(shapes) do
         if s.Frame and s.Frame.Parent then
             local w = math.floor(s.Frame.AbsoluteSize.X)
@@ -792,18 +788,15 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Atualiza Painel Inferior (Inspector) de forma centralizada e precisa
     if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
         local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
         local tipoNome = getTypeName(selectedShape.Type)
 
-        -- Arredonda APENAS na exibição para não sujar os cálculos internos
         local newText = string.format(
             "Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
-            tipoNome, math.round(rx), math.round(ry), math.round(w), math.round(h), math.round(cx), math.round(cy)
+            tipoNome, round(rx), round(ry), round(w), round(h), round(cx), round(cy)
         )
 
-        -- Evita atualizações desnecessárias no Frame (Otimização)
         if newText ~= lastStatsText then
             statsLabel.Text = newText
             lastStatsText = newText
