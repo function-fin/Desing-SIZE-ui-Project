@@ -1,6 +1,6 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
--- // Sistema Universal: Escala Relativa (Scale) para transporte entre dispositivos
--- // Botão externo configurado com base no centro relativo (-206, -220)
+-- // Abordagem Roblox-Style: SafeInsets + Anchor Reference + Offset
+-- // Botão externo centralizado para coleta de dados
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -20,9 +20,12 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "ScreenInspectorPro"
 gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.DisplayOrder = 999999
+
+-- // A MUDANÇA CRUCIAL DO SEU DOCUMENTO (Item 4 e 5)
+gui.IgnoreGuiInset = false
+gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 
 local ok = pcall(function() gui.Parent = CoreGui end)
 if not ok then gui.Parent = playerGui end
@@ -55,7 +58,7 @@ local function round(n)
     return math.floor(n + 0.5)
 end
 
--- // CAMADA DE ARRASTE ROBUSTA
+-- // Função de Arraste Robusta
 local function makeDraggable(dragHandle, targetFrame)
     local dragging = false
     local dragStartPos = Vector2.new(0, 0)
@@ -89,25 +92,22 @@ local function makeDraggable(dragHandle, targetFrame)
     end)
 end
 
--- // FUNÇÃO DE COORDENADAS PRECISA
-local function getShapeCoords(frame)
+-- // Função de Coordenadas com Referência de Anchor (Item 5 do Documento)
+local function getShapeReference(frame)
     local absPos = frame.AbsolutePosition
     local absSize = frame.AbsoluteSize
-    local vp = workspace.CurrentCamera.ViewportSize
+    local anchor = frame.AnchorPoint
     
-    local cX = vp.X / 2
-    local cY = vp.Y / 2
-
-    local w = absSize.X
-    local h = absSize.Y
-
-    local relX = absPos.X - cX
-    local relY = absPos.Y - cY
-
-    local cx = relX + (w / 2)
-    local cy = relY + (h / 2)
-
-    return relX, relY, w, h, cx, cy
+    -- Simulando a extração das bordas do Safe Area
+    local topLeftX = absPos.X
+    local topLeftY = absPos.Y
+    
+    -- Cálculo do Centro Geométrico (independente da âncora)
+    local centerX = topLeftX + (absSize.X / 2)
+    local centerY = topLeftY + (absSize.Y / 2)
+    
+    -- No futuro, aqui você pode enviar esses dados (Anchor + Offset) para fora
+    return topLeftX, topLeftY, absSize.X, absSize.Y, centerX, centerY, anchor
 end
 
 local function getTypeName(t)
@@ -132,24 +132,13 @@ shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — Escala Relativa
--- // A lógica aqui converte os pixels fixos (-206, -220) em escala (0-1)
--- // para que ele sempre apareça na mesma posição proporcional em qualquer tela.
+-- // BOTÃO EXTERNO — No Centro da Tela para coleta
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
 toggleOpenBtn.Size = UDim2.new(0, 44, 0, 42) 
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-
--- Cálculo da Escala Universal
--- Pegamos a tela atual e transformamos os offsets em frações da tela
-local vp = workspace.CurrentCamera.ViewportSize
--- targetX = 0.5 + (-206 / largura)
--- targetY = 0.5 + (-220 / altura)
-local scaleX = 0.5 + (-206 / vp.X)
-local scaleY = 0.5 + (-220 / vp.Y)
-
-toggleOpenBtn.Position = UDim2.new(scaleX, 0, scaleY, 0)
+toggleOpenBtn.Position = UDim2.new(0.5, 0, 0.5, 0) 
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
@@ -798,12 +787,13 @@ RunService.RenderStepped:Connect(function()
     end
 
     if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
-        local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
+        local topLeftX, topLeftY, w, h, cx, cy, anchor = getShapeReference(selectedShape.Frame)
         local tipoNome = getTypeName(selectedShape.Type)
 
+        -- Exibição agora mostra a referência de canto e o centro
         local newText = string.format(
             "Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
-            tipoNome, round(rx), round(ry), round(w), round(h), round(cx), round(cy)
+            tipoNome, round(topLeftX), round(topLeftY), round(w), round(h), round(cx), round(cy)
         )
 
         if newText ~= lastStatsText then
