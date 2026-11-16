@@ -1,7 +1,7 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
 -- // PC + Mobile | Coordenadas relativas ao centro da viewport
 -- // Clique = toggle seleção | Arraste = move + info ao vivo
--- // Botão externo ancorado no centro relativo (-204, -220) com 50x50
+-- // Botão externo: Tamanho 50x50 | Centro ancorado em (-204, -220)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -124,23 +124,21 @@ shapesLayer.BackgroundTransparency = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — Pos: -227, -239 | Centro: -204, -220
+-- // BOTÃO EXTERNO — Tamanho 50x50 | Centro (-204, -220)
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
 toggleOpenBtn.Size = UDim2.new(0, 50, 0, 50)
 
--- Calcula a posição inicial baseada no centro da viewport atual (-204, -220)
+-- Calcula a posição inicial baseada no centro da viewport atual
 local vp = workspace.CurrentCamera.ViewportSize
 local targetCenterX = -204
 local targetCenterY = -220
 local btnSize = 50
-local centerScreenX = (vp.X / 2)
-local centerScreenY = (vp.Y / 2)
 
--- Posição absoluta para o canto superior esquerdo ficar no centro desejado
-local startX = centerScreenX + targetCenterX - (btnSize / 2)
-local startY = centerScreenY + targetCenterY - (btnSize / 2)
+-- Posição absoluta para o centro do botão ficar exatamente em (-204, -220)
+local startX = (vp.X / 2) + targetCenterX - (btnSize / 2)
+local startY = (vp.Y / 2) + targetCenterY - (btnSize / 2)
 
 toggleOpenBtn.Position = UDim2.new(0, startX, 0, startY)
 toggleOpenBtn.BackgroundTransparency = 1
