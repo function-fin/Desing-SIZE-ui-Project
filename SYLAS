@@ -1,6 +1,5 @@
--- // SCREEN INSPECTOR & UI PROTOTYPER
+-- // SCREEN INSPECTOR & UI PROTOTYPER — Builder GUI Beta (Manager-integrated)
 -- // Abordagem Roblox-Style: SafeInsets + Anchor Reference + Offset
--- // Botão externo fixado no Centro (-212, -202) | Tamanho 49x51
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -10,11 +9,10 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-if playerGui:FindFirstChild("ScreenInspectorPro") then
-    playerGui.ScreenInspectorPro:Destroy()
-end
-if CoreGui:FindFirstChild("ScreenInspectorPro") then
-    CoreGui.ScreenInspectorPro:Destroy()
+-- Limpa instâncias antigas
+for _, container in ipairs({ playerGui, CoreGui }) do
+    local old = container:FindFirstChild("ScreenInspectorPro")
+    if old then old:Destroy() end
 end
 
 local gui = Instance.new("ScreenGui")
@@ -22,10 +20,17 @@ gui.Name = "ScreenInspectorPro"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.DisplayOrder = 999999
-
 gui.IgnoreGuiInset = false
 gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 
+-- =========================================================
+-- CONEXÃO COM O MANAGER
+-- =========================================================
+gui:SetAttribute("SPWN_ManagedScriptID", "ScreenInspectorPro_001")
+gui:SetAttribute("SPWN_ManagedScriptName", "Screen Inspector & UI Prototyper")
+gui:SetAttribute("SPWN_ManagedScriptCategory", "BUILDER")
+
+-- Parent correto (Manager procura em CoreGui ou PlayerGui)
 local ok = pcall(function() gui.Parent = CoreGui end)
 if not ok then gui.Parent = playerGui end
 
@@ -35,14 +40,12 @@ if not ok then gui.Parent = playerGui end
 local uiScale = Instance.new("UIScale", gui)
 local function updateUIScale()
     if not UserInputService.TouchEnabled then
-        uiScale.Scale = 1.7 -- Aumenta 70% no PC
+        uiScale.Scale = 1.7
     else
-        uiScale.Scale = 1.0 -- Mantém tamanho padrão no mobile
+        uiScale.Scale = 1.0
     end
 end
 updateUIScale()
-
--- Atualiza escala se o dispositivo mudar (ex: notebook híbrido)
 UserInputService.LastInputTypeChanged:Connect(updateUIScale)
 
 local ARCADE = Enum.Font.Arcade
@@ -69,9 +72,7 @@ local function applyStroke(obj, color, t)
     return s
 end
 
-local function round(n)
-    return math.floor(n + 0.5)
-end
+local function round(n) return math.floor(n + 0.5) end
 
 local function makeDraggable(dragHandle, targetFrame)
     local dragging = false
@@ -84,11 +85,8 @@ local function makeDraggable(dragHandle, targetFrame)
             dragging = true
             dragStartPos = input.Position
             startPos = targetFrame.Position
-
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
             end)
         end
     end)
@@ -110,59 +108,27 @@ local function getShapeCoords(frame)
     local absPos = frame.AbsolutePosition
     local absSize = frame.AbsoluteSize
     local vp = workspace.CurrentCamera.ViewportSize
-    
-    local cX = vp.X / 2
-    local cY = vp.Y / 2
-
-    local w = absSize.X
-    local h = absSize.Y
-
-    local relX = absPos.X - cX
-    local relY = absPos.Y - cY
-
-    local cx = relX + (w / 2)
-    local cy = relY + (h / 2)
-
+    local cX, cY = vp.X / 2, vp.Y / 2
+    local w, h = absSize.X, absSize.Y
+    local relX, relY = absPos.X - cX, absPos.Y - cY
+    local cx, cy = relX + (w / 2), relY + (h / 2)
     return relX, relY, w, h, cx, cy
 end
 
--- ==========================================
--- // DIAGNÓSTICO DE COORDENADAS
--- ==========================================
 local function compareShapeCoordinates(frame)
     local camera = workspace.CurrentCamera
-
-    if not camera or not frame then
-        warn("Câmera ou figura não encontrada.")
-        return
-    end
-
+    if not camera or not frame then warn("Câmera ou figura não encontrada.") return end
     local viewport = camera.ViewportSize
     local position = frame.AbsolutePosition
     local size = frame.AbsoluteSize
-
-    local centerX = viewport.X / 2
-    local centerY = viewport.Y / 2
-
-    local relativeX = position.X - centerX
-    local relativeY = position.Y - centerY
-
+    local centerX, centerY = viewport.X / 2, viewport.Y / 2
+    local relativeX, relativeY = position.X - centerX, position.Y - centerY
     print("========== SCREEN INSPECTOR ==========")
-    print("VIEWPORT:")
-    print("Largura:", viewport.X)
-    print("Altura:", viewport.Y)
-    print("POSIÇÃO REAL DA FIGURA:")
-    print("X:", position.X)
-    print("Y:", position.Y)
-    print("DIMENSÕES REAIS:")
-    print("Largura:", size.X)
-    print("Altura:", size.Y)
-    print("POSIÇÃO RELATIVA AO CENTRO:")
-    print("X:", relativeX)
-    print("Y:", relativeY)
-    print("CENTRO DA FIGURA:")
-    print("X:", position.X + size.X / 2 - centerX)
-    print("Y:", position.Y + size.Y / 2 - centerY)
+    print("VIEWPORT:", viewport.X, viewport.Y)
+    print("POSIÇÃO REAL:", position.X, position.Y)
+    print("DIMENSÕES:", size.X, size.Y)
+    print("RELATIVO AO CENTRO:", relativeX, relativeY)
+    print("CENTRO DA FIGURA:", position.X + size.X / 2 - centerX, position.Y + size.Y / 2 - centerY)
     print("======================================")
 end
 
@@ -189,12 +155,13 @@ shapesLayer.Parent = gui
 
 -- // ==========================================
 -- // BOTÃO EXTERNO — Fixado no Centro (-212, -202) | 49x51
+-- // NOME: OpenToggleButton (obrigatório p/ Manager)
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
-toggleOpenBtn.Name = "ExternalToggleBtn"
-toggleOpenBtn.Size = UDim2.new(0, 49, 0, 51) 
+toggleOpenBtn.Name = "OpenToggleButton"
+toggleOpenBtn.Size = UDim2.new(0, 49, 0, 51)
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleOpenBtn.Position = UDim2.new(0.5, -212, 0.5, -202) 
+toggleOpenBtn.Position = UDim2.new(0.5, -212, 0.5, -202)
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
@@ -216,9 +183,7 @@ end)
 
 toggleOpenBtn.InputChanged:Connect(function(input)
     if bPressPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        if (input.Position - bPressPos).Magnitude > 6 then
-            bMoved = true
-        end
+        if (input.Position - bPressPos).Magnitude > 6 then bMoved = true end
     end
 end)
 
@@ -616,11 +581,7 @@ local function deselectShape()
 end
 
 local function toggleShape(shapeData)
-    if selectedShape == shapeData then
-        deselectShape()
-    else
-        selectShape(shapeData)
-    end
+    if selectedShape == shapeData then deselectShape() else selectShape(shapeData) end
 end
 
 local CLICK_THRESHOLD = 6
@@ -638,10 +599,7 @@ local function bindFrameInteractions(frame, shapeData)
             pressTime = tick()
             dragging = false
             dragStartPos = frame.Position
-
-            if selectedShape ~= shapeData then
-                selectShape(shapeData)
-            end
+            if selectedShape ~= shapeData then selectShape(shapeData) end
         end
     end)
 
@@ -649,9 +607,7 @@ local function bindFrameInteractions(frame, shapeData)
         if dragLocked then return end
         if pressPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - pressPos
-            if not dragging and delta.Magnitude > CLICK_THRESHOLD then
-                dragging = true
-            end
+            if not dragging and delta.Magnitude > CLICK_THRESHOLD then dragging = true end
         end
     end)
 
@@ -673,10 +629,7 @@ local function bindFrameInteractions(frame, shapeData)
                 local moved = dragging
                 pressPos = nil
                 dragging = false
-
-                if not moved and held < 0.6 then
-                    toggleShape(shapeData)
-                end
+                if not moved and held < 0.6 then toggleShape(shapeData) end
             end
         end
     end)
@@ -684,7 +637,7 @@ end
 
 -- // ==========================================
 -- // CRIAÇÃO DE FIGURA
--- ==========================================
+-- // ==========================================
 local function createShape(shapeType)
     local w, h = currentSize, currentSize
     if shapeType == "Retangulo" then
@@ -705,9 +658,7 @@ local function createShape(shapeType)
     frame.Parent = shapesLayer
     frame.ZIndex = 2
 
-    if shapeType == "Circulo" then
-        applyCorner(frame, 999)
-    end
+    if shapeType == "Circulo" then applyCorner(frame, 999) end
 
     local stroke = applyStroke(frame, Color3.fromRGB(255, 255, 255), currentThickness)
 
@@ -815,7 +766,6 @@ local function createShape(shapeType)
     }
 
     bindFrameInteractions(frame, shapeData)
-
     table.insert(shapes, shapeData)
     selectShape(shapeData)
 end
@@ -826,7 +776,7 @@ btnRetangulo.MouseButton1Click:Connect(function() createShape("Retangulo") end)
 
 -- // ==========================================
 -- // LOOP — ATUALIZAÇÃO EM TEMPO REAL
--- ==========================================
+-- // ==========================================
 local lastStatsText = ""
 
 RunService.RenderStepped:Connect(function()
@@ -848,17 +798,14 @@ RunService.RenderStepped:Connect(function()
     if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
         local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
         local tipoNome = getTypeName(selectedShape.Type)
-
         local newText = string.format(
             "Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
             tipoNome, round(rx), round(ry), round(w), round(h), round(cx), round(cy)
         )
-
         if newText ~= lastStatsText then
             statsLabel.Text = newText
             lastStatsText = newText
         end
-        
         statusTitle.Text = "Figura Ativa!"
         statusDesc.Text = "Arraste p/ mover."
         previewCorner.CornerRadius = (selectedShape.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
