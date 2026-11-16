@@ -1,11 +1,12 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
--- // Ancoragem universal usando o Centro da viewport (Mecanismo Roblox)
--- // Botão externo: Tamanho 44x37 | Centro ancorado em (-206, -220) | Fonte Arcade
+-- // Documento de Correção: Precisão Matemática + Arraste Robusto + Tempo Real
+-- // Botão externo fixo em (-206, -220) | Tamanho 44x37
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local GuiService = game:GetService("GuiService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -51,15 +52,17 @@ local function applyStroke(obj, color, t)
     return s
 end
 
+-- // CAMADA DE ARRASTE ROBUSTA (Item 4 do Documento)
 local function makeDraggable(dragHandle, targetFrame)
     local dragging = false
-    local dragInput, dragStart, startPos
+    local dragStartPos = Vector2.new(0, 0)
+    local startPos = UDim2.new(0, 0, 0, 0)
 
     dragHandle.InputBegan:Connect(function(input)
         if dragLocked then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            dragStart = input.Position
+            dragStartPos = input.Position
             startPos = targetFrame.Position
 
             input.Changed:Connect(function()
@@ -70,35 +73,43 @@ local function makeDraggable(dragHandle, targetFrame)
         end
     end)
 
-    dragHandle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
+    -- InputChanged Global (Não depende do dragInput do elemento)
     UserInputService.InputChanged:Connect(function(input)
-        if not dragLocked and input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            targetFrame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
+        if dragging and not dragLocked then
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                local delta = input.Position - dragStartPos
+                targetFrame.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
         end
     end)
 end
 
+-- // FUNÇÃO DE COORDENADAS PRECISA (Itens 2 e 3 do Documento)
 local function getShapeCoords(frame)
     local absPos = frame.AbsolutePosition
     local absSize = frame.AbsoluteSize
     local vp = workspace.CurrentCamera.ViewportSize
-    local cX, cY = vp.X / 2, vp.Y / 2
+    
+    -- Centro absoluto da tela
+    local cX = vp.X / 2
+    local cY = vp.Y / 2
 
-    local w = math.floor(absSize.X)
-    local h = math.floor(absSize.Y)
-    local relX = math.floor(absPos.X - cX)
-    local relY = math.floor(absPos.Y - cY)
-    local cx = math.floor(relX + w / 2)
-    local cy = math.floor(relY + h / 2)
+    -- Dimensões reais (sem math.floor para não perder precisão)
+    local w = absSize.X
+    local h = absSize.Y
+
+    -- Posição relativa ao centro (Canto Superior Esquerdo)
+    local relX = absPos.X - cX
+    local relY = absPos.Y - cY
+
+    -- Centro Geométrico Relativo
+    local cx = relX + (w / 2)
+    local cy = relY + (h / 2)
+
+    -- Retorna valores com precisão decimal, arredondamento fica a cargo da exibição
     return relX, relY, w, h, cx, cy
 end
 
@@ -120,18 +131,16 @@ local shapesLayer = Instance.new("Frame")
 shapesLayer.Name = "ShapesLayer"
 shapesLayer.Size = UDim2.new(1, 0, 1, 0)
 shapesLayer.BackgroundTransparency = 1
+shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — 100% Ancorado no Centro (-206, -220)
+-- // BOTÃO EXTERNO — Fixado (-206, -220) | 44x37
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
--- Tamanho exato coletado: 44x37
 toggleOpenBtn.Size = UDim2.new(0, 44, 0, 37) 
--- Ancorando o CENTRO (mecanismo universal do Roblox)
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
--- O 0.5 garante a metade da tela, e -206, -220 fixa a posição proporcional exata
 toggleOpenBtn.Position = UDim2.new(0.5, -206, 0.5, -220) 
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
@@ -181,6 +190,7 @@ infoPanel.Position = UDim2.new(0, 15, 1, -115)
 infoPanel.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
 infoPanel.BackgroundTransparency = 0.05
 infoPanel.Active = true
+infoPanel.ZIndex = 50
 infoPanel.Parent = uiContainer
 applyCorner(infoPanel, 10)
 applyStroke(infoPanel, Color3.fromRGB(255, 255, 255), 1.2)
@@ -257,6 +267,7 @@ mainPanel.Position = UDim2.new(1, -250, 0.5, -164)
 mainPanel.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
 mainPanel.BackgroundTransparency = 0.04
 mainPanel.Active = true
+mainPanel.ZIndex = 50
 mainPanel.Parent = uiContainer
 applyCorner(mainPanel, 12)
 applyStroke(mainPanel, Color3.fromRGB(255, 255, 255), 1.2)
@@ -462,9 +473,7 @@ sizeSliderUpdate = createSlider("Tamanho:", 182, 20, 400, 100, function(val)
         else
             selectedShape.Frame.Size = UDim2.new(0, val, 0, val)
         end
-        local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
-        statsLabel.Text = string.format("Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
-            getTypeName(selectedShape.Type), rx, ry, w, h, cx, cy)
+        -- Não precisa atualizar statsLabel aqui manualmente, o loop faz isso (Item 5)
     end
 end)
 
@@ -531,25 +540,8 @@ end, true)
 createToggleRow("Bloquear Arraste", 302, function(a) dragLocked = a end, false)
 
 -- // ==========================================
--- // SELEÇÃO
+-- // SELEÇÃO E LÓGICA DE CLIQUE
 -- // ==========================================
-local function refreshInfoPanel()
-    if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
-        local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
-        statsLabel.Text = string.format("Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
-            getTypeName(selectedShape.Type), rx, ry, w, h, cx, cy)
-        statusTitle.Text = "Figura Ativa!"
-        statusDesc.Text = "Arraste p/ mover."
-        previewCorner.CornerRadius = (selectedShape.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
-        previewStroke.Thickness = selectedShape.Stroke.Thickness
-    else
-        statsLabel.Text = "Tipo: Nenhum\nPos: 0, 0\nTam: 0, 0\nCentro: 0, 0"
-        statusTitle.Text = "Nenhuma Figura"
-        statusDesc.Text = "Clique na figura."
-        previewStroke.Thickness = 1.5
-    end
-end
-
 local function showHandles(shapeData)
     for _, s in ipairs(shapes) do
         if s.HandlesFolder then
@@ -561,13 +553,12 @@ end
 local function selectShape(shapeData)
     selectedShape = shapeData
     showHandles(shapeData)
-    refreshInfoPanel()
+    -- Não chama update manual, deixa o RenderStepped fazer a atualização contínua
 end
 
 local function deselectShape()
     selectedShape = nil
     showHandles(nil)
-    refreshInfoPanel()
 end
 
 local function toggleShape(shapeData)
@@ -578,9 +569,6 @@ local function toggleShape(shapeData)
     end
 end
 
--- // ==========================================
--- // INTERAÇÃO: clique vs arraste
--- // ==========================================
 local CLICK_THRESHOLD = 6
 
 local function bindFrameInteractions(frame, shapeData)
@@ -621,7 +609,6 @@ local function bindFrameInteractions(frame, shapeData)
                 dragStartPos.X.Scale, dragStartPos.X.Offset + delta.X,
                 dragStartPos.Y.Scale, dragStartPos.Y.Offset + delta.Y
             )
-            refreshInfoPanel()
         end
     end)
 
@@ -662,6 +649,7 @@ local function createShape(shapeType)
     frame.Visible = visibilityState[shapeType]
     frame.Active = true
     frame.Parent = shapesLayer
+    frame.ZIndex = 2 -- Figuras ficam acima do fundo mas abaixo dos painéis (ZIndex 50)
 
     if shapeType == "Circulo" then
         applyCorner(frame, 999)
@@ -758,7 +746,6 @@ local function createShape(shapeType)
 
                 frame.Size = UDim2.new(0, newW, 0, newH)
                 frame.Position = UDim2.new(startPos.X.Scale, posX, startPos.Y.Scale, posY)
-                refreshInfoPanel()
             end
         end)
     end
@@ -784,9 +771,12 @@ btnCirculo.MouseButton1Click:Connect(function() createShape("Circulo") end)
 btnRetangulo.MouseButton1Click:Connect(function() createShape("Retangulo") end)
 
 -- // ==========================================
--- // LOOP — tags de tamanho
+-- // LOOP — ATUALIZAÇÃO EM TEMPO REAL (Item 5)
 -- // ==========================================
+local lastStatsText = ""
+
 RunService.RenderStepped:Connect(function()
+    -- Atualiza tags visuais (dentro da própria figura)
     for _, s in ipairs(shapes) do
         if s.Frame and s.Frame.Parent then
             local w = math.floor(s.Frame.AbsoluteSize.X)
@@ -799,6 +789,37 @@ RunService.RenderStepped:Connect(function()
                 s.BottomTag.Text = tostring(w)
                 s.LeftTag.Text = tostring(h)
             end
+        end
+    end
+
+    -- Atualiza Painel Inferior (Inspector) de forma centralizada e precisa
+    if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
+        local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
+        local tipoNome = getTypeName(selectedShape.Type)
+
+        -- Arredonda APENAS na exibição para não sujar os cálculos internos
+        local newText = string.format(
+            "Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
+            tipoNome, math.round(rx), math.round(ry), math.round(w), math.round(h), math.round(cx), math.round(cy)
+        )
+
+        -- Evita atualizações desnecessárias no Frame (Otimização)
+        if newText ~= lastStatsText then
+            statsLabel.Text = newText
+            lastStatsText = newText
+        end
+        
+        statusTitle.Text = "Figura Ativa!"
+        statusDesc.Text = "Arraste p/ mover."
+        previewCorner.CornerRadius = (selectedShape.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
+        previewStroke.Thickness = selectedShape.Stroke.Thickness
+    else
+        if lastStatsText ~= "" then
+            statsLabel.Text = "Tipo: Nenhum\nPos: 0, 0\nTam: 0, 0\nCentro: 0, 0"
+            statusTitle.Text = "Nenhuma Figura"
+            statusDesc.Text = "Clique na figura."
+            previewStroke.Thickness = 1.5
+            lastStatsText = ""
         end
     end
 end)
