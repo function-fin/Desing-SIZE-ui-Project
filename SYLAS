@@ -1,9 +1,10 @@
--- // SCREEN INSPECTOR & UI PROTOTYPER (Ajustado & Otimizado)
+-- // SCREEN INSPECTOR & UI PROTOTYPER (Ajustes Finais: Botão ID Puro + Fechado + Painel +10%)
 -- // Design Dark Minimalist + Mobile/PC Touch & Drag Support
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -11,14 +12,23 @@ local playerGui = player:WaitForChild("PlayerGui")
 if playerGui:FindFirstChild("ScreenInspectorPro") then
     playerGui.ScreenInspectorPro:Destroy()
 end
+if CoreGui:FindFirstChild("ScreenInspectorPro") then
+    CoreGui.ScreenInspectorPro:Destroy()
+end
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "ScreenInspectorPro"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.DisplayOrder = 500 -- Acima do jogo, mas respeitando o Delta
-gui.Parent = playerGui
+gui.DisplayOrder = 999999 -- Prioridade máxima para ficar acima de tudo
+
+local success = pcall(function()
+    gui.Parent = CoreGui
+end)
+if not success then
+    gui.Parent = playerGui
+end
 
 -- // Estado Global
 local shapes = {}
@@ -78,7 +88,7 @@ local function makeDraggable(dragHandle, targetFrame, onSelectCallback)
 
     UserInputService.InputChanged:Connect(function(input)
         if not dragLocked and input == dragInput and dragging then
-            local delta = input.Position - startMouse or (input.Position - dragStart)
+            local delta = input.Position - dragStart
             targetFrame.Position = UDim2.new(
                 startPos.X.Scale,
                 startPos.X.Offset + delta.X,
@@ -94,6 +104,7 @@ local uiContainer = Instance.new("Frame")
 uiContainer.Name = "MainUIContainer"
 uiContainer.Size = UDim2.new(1, 0, 1, 0)
 uiContainer.BackgroundTransparency = 1
+uiContainer.Visible = false -- Surge fechado na tela
 uiContainer.Parent = gui
 
 local shapesLayer = Instance.new("Frame")
@@ -103,22 +114,20 @@ shapesLayer.BackgroundTransparency = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // 1. BOTÃO EXTERNO (ID 132397280170762)
+-- // 1. BOTÃO EXTERNO ARRASTÁVEL (ID PURO, SEM BORDA)
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
-toggleOpenBtn.Size = UDim2.new(0, 36, 0, 36)
-toggleOpenBtn.Position = UDim2.new(0, 142, 0, 10) -- Posição exata na barra superior[cite: 5]
-toggleOpenBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+toggleOpenBtn.Size = UDim2.new(0, 40, 0, 40)
+toggleOpenBtn.Position = UDim2.new(0, 140, 0, 12)
+toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
 toggleOpenBtn.Parent = gui
-applyCorner(toggleOpenBtn, 10)
-applyStroke(toggleOpenBtn, Color3.fromRGB(255, 255, 255), 1.5)
 
 makeDraggable(toggleOpenBtn, toggleOpenBtn)
 
-local isOpen = true
+local isOpen = false
 toggleOpenBtn.MouseButton1Click:Connect(function()
     isOpen = not isOpen
     uiContainer.Visible = isOpen
@@ -150,7 +159,6 @@ infoTitle.TextSize = 12
 infoTitle.TextXAlignment = Enum.TextXAlignment.Left
 infoTitle.Parent = infoPanel
 
--- Miniatura
 local previewBox = Instance.new("Frame")
 previewBox.Size = UDim2.new(0, 50, 0, 50)
 previewBox.Position = UDim2.new(0, 12, 0, 34)
@@ -159,7 +167,6 @@ previewBox.Parent = infoPanel
 local previewCorner = applyCorner(previewBox, 4)
 local previewStroke = applyStroke(previewBox, Color3.fromRGB(255, 255, 255), 1.5)
 
--- Estatísticas
 local statsLabel = Instance.new("TextLabel")
 statsLabel.Size = UDim2.new(0, 125, 0, 60)
 statsLabel.Position = UDim2.new(0, 70, 0, 32)
@@ -173,7 +180,6 @@ statsLabel.RichText = true
 statsLabel.Text = "Tipo: <b>Nenhum</b>\nPosição: 0, 0\nTamanho: 0, 0\nCentro: 0, 0"
 statsLabel.Parent = infoPanel
 
--- Divisória
 local vLine = Instance.new("Frame")
 vLine.Size = UDim2.new(0, 1, 0, 56)
 vLine.Position = UDim2.new(0, 200, 0, 34)
@@ -181,7 +187,6 @@ vLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 vLine.BorderSizePixel = 0
 vLine.Parent = infoPanel
 
--- Status (Atualizado dinamicamente)
 local statusTitle = Instance.new("TextLabel")
 statusTitle.Size = UDim2.new(0, 95, 0, 18)
 statusTitle.Position = UDim2.new(0, 208, 0, 34)
@@ -206,12 +211,12 @@ statusDesc.TextYAlignment = Enum.TextYAlignment.Top
 statusDesc.Parent = infoPanel
 
 -- // ==========================================
--- // 3. PAINEL DIREITO: SCREEN INSPECTOR
+-- // 3. PAINEL DIREITO: SCREEN INSPECTOR (+10% Tamanho)
 -- // ==========================================
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "ScreenInspectorPanel"
-mainPanel.Size = UDim2.new(0, 215, 0, 298)
-mainPanel.Position = UDim2.new(1, -230, 0.5, -149)
+mainPanel.Size = UDim2.new(0, 236, 0, 328) -- Aumentado em 10%
+mainPanel.Position = UDim2.new(1, -250, 0.5, -164)
 mainPanel.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
 mainPanel.BackgroundTransparency = 0.04
 mainPanel.Parent = uiContainer
@@ -221,43 +226,43 @@ applyStroke(mainPanel, Color3.fromRGB(75, 75, 75), 1.2)
 makeDraggable(mainPanel, mainPanel)
 
 local headerTitle = Instance.new("TextLabel")
-headerTitle.Size = UDim2.new(1, 0, 0, 28)
+headerTitle.Size = UDim2.new(1, 0, 0, 30)
 headerTitle.Position = UDim2.new(0, 0, 0, 6)
 headerTitle.BackgroundTransparency = 1
 headerTitle.Text = "Screen Inspector"
 headerTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 headerTitle.Font = Enum.Font.GothamBold
-headerTitle.TextSize = 13.5
+headerTitle.TextSize = 14
 headerTitle.Parent = mainPanel
 
 local subBox = Instance.new("Frame")
-subBox.Size = UDim2.new(1, -16, 0, 32)
-subBox.Position = UDim2.new(0, 8, 0, 34)
+subBox.Size = UDim2.new(1, -16, 0, 34)
+subBox.Position = UDim2.new(0, 8, 0, 36)
 subBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 subBox.Parent = mainPanel
 applyCorner(subBox, 6)
 
 local subText = Instance.new("TextLabel")
-subText.Size = UDim2.new(1, -10, 1, 0)
-subText.Position = UDim2.new(0, 5, 0, 0)
+subText.Size = UDim2.new(1, -12, 1, 0)
+subText.Position = UDim2.new(0, 6, 0, 0)
 subText.BackgroundTransparency = 1
 subText.Text = "Adicione figuras na tela para capturar coordenadas."
 subText.TextColor3 = Color3.fromRGB(200, 200, 200)
 subText.Font = Enum.Font.Gotham
-subText.TextSize = 9.5
+subText.TextSize = 10
 subText.TextWrapped = true
 subText.TextXAlignment = Enum.TextXAlignment.Left
 subText.Parent = subBox
 
 -- Ferramentas
 local toolsLabel = Instance.new("TextLabel")
-toolsLabel.Size = UDim2.new(1, -16, 0, 18)
-toolsLabel.Position = UDim2.new(0, 10, 0, 72)
+toolsLabel.Size = UDim2.new(1, -16, 0, 20)
+toolsLabel.Position = UDim2.new(0, 10, 0, 76)
 toolsLabel.BackgroundTransparency = 1
 toolsLabel.Text = "Ferramentas"
 toolsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
 toolsLabel.Font = Enum.Font.GothamBold
-toolsLabel.TextSize = 11
+toolsLabel.TextSize = 11.5
 toolsLabel.TextXAlignment = Enum.TextXAlignment.Left
 toolsLabel.Parent = mainPanel
 
@@ -265,8 +270,8 @@ local toolButtons = {}
 
 local function createToolCard(name, posX, shapeType)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 62, 0, 48)
-    btn.Position = UDim2.new(0, posX, 0, 92)
+    btn.Size = UDim2.new(0, 68, 0, 52)
+    btn.Position = UDim2.new(0, posX, 0, 98)
     btn.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
     btn.Text = ""
     btn.AutoButtonColor = false
@@ -280,27 +285,27 @@ local function createToolCard(name, posX, shapeType)
     icon.Parent = btn
 
     if shapeType == "Quadrado" then
-        icon.Size = UDim2.new(0, 15, 0, 15)
-        icon.Position = UDim2.new(0.5, -7.5, 0, 8)
+        icon.Size = UDim2.new(0, 16, 0, 16)
+        icon.Position = UDim2.new(0.5, -8, 0, 9)
     elseif shapeType == "Circulo" then
-        icon.Size = UDim2.new(0, 15, 0, 15)
-        icon.Position = UDim2.new(0.5, -7.5, 0, 8)
+        icon.Size = UDim2.new(0, 16, 0, 16)
+        icon.Position = UDim2.new(0.5, -8, 0, 9)
         applyCorner(icon, 99)
     elseif shapeType == "Retangulo" then
-        icon.Size = UDim2.new(0, 22, 0, 11)
-        icon.Position = UDim2.new(0.5, -11, 0, 10)
+        icon.Size = UDim2.new(0, 24, 0, 12)
+        icon.Position = UDim2.new(0.5, -12, 0, 11)
         icon.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
         applyStroke(icon, Color3.fromRGB(255, 255, 255), 1.5)
     end
 
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 18)
-    lbl.Position = UDim2.new(0, 0, 1, -18)
+    lbl.Size = UDim2.new(1, 0, 0, 20)
+    lbl.Position = UDim2.new(0, 0, 1, -20)
     lbl.BackgroundTransparency = 1
     lbl.Text = name
     lbl.TextColor3 = Color3.fromRGB(230, 230, 230)
     lbl.Font = Enum.Font.GothamMedium
-    lbl.TextSize = 9.5
+    lbl.TextSize = 10
     lbl.Parent = btn
 
     toolButtons[shapeType] = stroke
@@ -308,18 +313,18 @@ local function createToolCard(name, posX, shapeType)
 end
 
 local btnQuadrado = createToolCard("Quadrado", 10, "Quadrado")
-local btnCirculo = createToolCard("Círculo", 76, "Circulo")
-local btnRetangulo = createToolCard("Retângulo", 142, "Retangulo")
+local btnCirculo = createToolCard("Círculo", 84, "Circulo")
+local btnRetangulo = createToolCard("Retângulo", 158, "Retangulo")
 
--- Sliders
+-- Sliders de Controle
 local ctrlLabel = Instance.new("TextLabel")
-ctrlLabel.Size = UDim2.new(1, -16, 0, 18)
-ctrlLabel.Position = UDim2.new(0, 10, 0, 146)
+ctrlLabel.Size = UDim2.new(1, -16, 0, 20)
+ctrlLabel.Position = UDim2.new(0, 10, 0, 156)
 ctrlLabel.BackgroundTransparency = 1
 ctrlLabel.Text = "Controles"
 ctrlLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
 ctrlLabel.Font = Enum.Font.GothamBold
-ctrlLabel.TextSize = 11
+ctrlLabel.TextSize = 11.5
 ctrlLabel.TextXAlignment = Enum.TextXAlignment.Left
 ctrlLabel.Parent = mainPanel
 
@@ -327,19 +332,19 @@ local sizeSliderUpdate, thickSliderUpdate
 
 local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChange)
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 55, 0, 18)
+    lbl.Size = UDim2.new(0, 60, 0, 20)
     lbl.Position = UDim2.new(0, 10, 0, posY)
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText
     lbl.TextColor3 = Color3.fromRGB(210, 210, 210)
     lbl.Font = Enum.Font.Gotham
-    lbl.TextSize = 10.5
+    lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = mainPanel
 
     local track = Instance.new("Frame")
-    track.Size = UDim2.new(0, 85, 0, 3)
-    track.Position = UDim2.new(0, 68, 0, posY + 8)
+    track.Size = UDim2.new(0, 95, 0, 4)
+    track.Position = UDim2.new(0, 75, 0, posY + 8)
     track.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
     track.BorderSizePixel = 0
     track.Parent = mainPanel
@@ -353,21 +358,21 @@ local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChang
     applyCorner(fill, 3)
 
     local knob = Instance.new("TextButton")
-    knob.Size = UDim2.new(0, 11, 0, 11)
-    knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -5.5, 0.5, -5.5)
+    knob.Size = UDim2.new(0, 12, 0, 12)
+    knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -6, 0.5, -6)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.Text = ""
     knob.Parent = track
     applyCorner(knob, 99)
 
     local valBox = Instance.new("TextLabel")
-    valBox.Size = UDim2.new(0, 32, 0, 18)
-    valBox.Position = UDim2.new(1, -38, 0, posY)
+    valBox.Size = UDim2.new(0, 36, 0, 20)
+    valBox.Position = UDim2.new(1, -42, 0, posY)
     valBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     valBox.Text = tostring(defaultVal)
     valBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     valBox.Font = Enum.Font.GothamBold
-    valBox.TextSize = 10
+    valBox.TextSize = 10.5
     valBox.Parent = mainPanel
     applyCorner(valBox, 4)
     applyStroke(valBox, Color3.fromRGB(60, 60, 60), 1)
@@ -376,7 +381,7 @@ local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChang
         val = math.clamp(math.floor(val), minVal, maxVal)
         local alpha = (val - minVal) / (maxVal - minVal)
         fill.Size = UDim2.new(alpha, 0, 1, 0)
-        knob.Position = UDim2.new(alpha, -5.5, 0.5, -5.5)
+        knob.Position = UDim2.new(alpha, -6, 0.5, -6)
         valBox.Text = tostring(val)
     end
 
@@ -413,7 +418,7 @@ local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChang
     return setVisual
 end
 
-sizeSliderUpdate = createSlider("Tamanho:", 168, 20, 400, 100, function(val)
+sizeSliderUpdate = createSlider("Tamanho:", 182, 20, 400, 100, function(val)
     currentSize = val
     if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
         if selectedShape.Type == "Retangulo" then
@@ -425,7 +430,7 @@ sizeSliderUpdate = createSlider("Tamanho:", 168, 20, 400, 100, function(val)
     end
 end)
 
-thickSliderUpdate = createSlider("Espessura:", 192, 1, 15, 3, function(val)
+thickSliderUpdate = createSlider("Espessura:", 208, 1, 15, 3, function(val)
     currentThickness = val
     if selectedShape and selectedShape.Stroke then
         selectedShape.Stroke.Thickness = val
@@ -435,19 +440,19 @@ end)
 -- Toggles
 local function createToggleRow(text, posY, callback, initialState)
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 130, 0, 18)
+    lbl.Size = UDim2.new(0, 140, 0, 20)
     lbl.Position = UDim2.new(0, 10, 0, posY)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
     lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
     lbl.Font = Enum.Font.Gotham
-    lbl.TextSize = 10.5
+    lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = mainPanel
 
     local switch = Instance.new("TextButton")
-    switch.Size = UDim2.new(0, 32, 0, 16)
-    switch.Position = UDim2.new(1, -42, 0, posY + 1)
+    switch.Size = UDim2.new(0, 34, 0, 18)
+    switch.Position = UDim2.new(1, -44, 0, posY + 1)
     switch.BackgroundColor3 = initialState and Color3.fromRGB(245, 245, 245) or Color3.fromRGB(45, 45, 45)
     switch.Text = ""
     switch.Parent = mainPanel
@@ -455,8 +460,8 @@ local function createToggleRow(text, posY, callback, initialState)
     applyStroke(switch, Color3.fromRGB(255, 255, 255), 1)
 
     local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 12, 0, 12)
-    dot.Position = initialState and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6)
+    dot.Size = UDim2.new(0, 14, 0, 14)
+    dot.Position = initialState and UDim2.new(1, -15, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
     dot.BackgroundColor3 = initialState and Color3.fromRGB(15, 15, 15) or Color3.fromRGB(180, 180, 180)
     dot.Parent = switch
     applyCorner(dot, 99)
@@ -466,38 +471,38 @@ local function createToggleRow(text, posY, callback, initialState)
         active = not active
         switch.BackgroundColor3 = active and Color3.fromRGB(245, 245, 245) or Color3.fromRGB(45, 45, 45)
         dot.BackgroundColor3 = active and Color3.fromRGB(15, 15, 15) or Color3.fromRGB(180, 180, 180)
-        dot.Position = active and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6)
+        dot.Position = active and UDim2.new(1, -15, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
         callback(active)
     end)
 end
 
-createToggleRow("Mostrar Quadrado", 218, function(active)
+createToggleRow("Mostrar Quadrado", 236, function(active)
     visibilityState["Quadrado"] = active
     for _, s in ipairs(shapes) do
         if s.Type == "Quadrado" and s.Frame then s.Frame.Visible = active end
     end
 end, true)
 
-createToggleRow("Mostrar Círculo", 238, function(active)
+createToggleRow("Mostrar Círculo", 258, function(active)
     visibilityState["Circulo"] = active
     for _, s in ipairs(shapes) do
         if s.Type == "Circulo" and s.Frame then s.Frame.Visible = active end
     end
 end, true)
 
-createToggleRow("Mostrar Retângulo", 258, function(active)
+createToggleRow("Mostrar Retângulo", 280, function(active)
     visibilityState["Retangulo"] = active
     for _, s in ipairs(shapes) do
         if s.Type == "Retangulo" and s.Frame then s.Frame.Visible = active end
     end
 end, true)
 
-createToggleRow("Bloquear Arraste", 278, function(active)
+createToggleRow("Bloquear Arraste", 302, function(active)
     dragLocked = active
 end, false)
 
 -- // ==========================================
--- // 4. SISTEMA DE SELEÇÃO E CRIAÇÃO
+-- // 4. SISTEMA DE CRIAÇÃO E REDIMENSIONAMENTO
 -- // ==========================================
 local function selectShape(shapeData)
     selectedShape = shapeData
@@ -521,12 +526,8 @@ local function selectShape(shapeData)
     if shapeData then
         previewCorner.CornerRadius = (shapeData.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
         previewStroke.Thickness = shapeData.Stroke.Thickness
-        
-        -- Atualiza dinamicamente o status com o nome correto da figura ativa[cite: 5]
-        local tipoNome = shapeData.Type == "Circulo" and "Círculo" or (shapeData.Type == "Retangulo" and "Retângulo" or "Quadrado")
-        statusTitle.Text = tipoNome .. " Ativo"
-        statusDesc.Text = "Manuseando na tela."
-        
+        statusTitle.Text = "Figura Ativa!"
+        statusDesc.Text = "Arraste os cantos."
         sizeSliderUpdate(shapeData.Frame.AbsoluteSize.X)
         thickSliderUpdate(shapeData.Stroke.Thickness)
     else
