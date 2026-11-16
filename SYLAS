@@ -1,5 +1,6 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER — Builder GUI Beta (Manager-integrated)
 -- // Abordagem Roblox-Style: SafeInsets + Anchor Reference + Offset
+-- // AJUSTE UNIVERSAL: Posição do botão convertida para Escala (Scale)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -153,15 +154,21 @@ shapesLayer.BackgroundTransparency = 1
 shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
+-- ==========================================
+-- // BOTÃO EXTERNO — CONVERSÃO AUTOMÁTICA PARA ESCALA
 -- // ==========================================
--- // BOTÃO EXTERNO — Fixado no Centro (-212, -202) | 49x51
--- // NOME: OpenToggleButton (obrigatório p/ Manager)
--- // ==========================================
+local viewport = workspace.CurrentCamera.ViewportSize
+
+-- Converte os offsets -212, -202 para escala (proporção da tela)
+-- scale = 0.5 + (offset / viewport)
+local scaleX = 0.5 + (-212 / viewport.X)
+local scaleY = 0.5 + (-202 / viewport.Y)
+
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "OpenToggleButton"
 toggleOpenBtn.Size = UDim2.new(0, 49, 0, 51)
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleOpenBtn.Position = UDim2.new(0.5, -212, 0.5, -202)
+toggleOpenBtn.Position = UDim2.new(scaleX, 0, scaleY, 0)
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
