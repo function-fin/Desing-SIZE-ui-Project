@@ -1,6 +1,5 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
--- // Ancoragem universal usando o Centro da viewport (Mecanismo Roblox)
--- // Botão externo: 50x42 | Centro ancorado em (-206, -220) | Fonte Arcade
+-- // Ancoragem universal | Botão externo resetado para o centro da tela
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -51,7 +50,6 @@ local function applyStroke(obj, color, t)
     return s
 end
 
--- // makeDraggable — usado por botão externo e painéis
 local function makeDraggable(dragHandle, targetFrame)
     local dragging = false
     local dragInput, dragStart, startPos
@@ -88,7 +86,6 @@ local function makeDraggable(dragHandle, targetFrame)
     end)
 end
 
--- // Coordenadas relativas ao centro da viewport
 local function getShapeCoords(frame)
     local absPos = frame.AbsolutePosition
     local absSize = frame.AbsoluteSize
@@ -125,16 +122,14 @@ shapesLayer.BackgroundTransparency = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — Mecanismo Roblox: Anchor 0.5, 0.5 | Pos -206, -220
+-- // BOTÃO EXTERNO — Resetado para o centro
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
--- Tamanho exato coletado: 50x42
 toggleOpenBtn.Size = UDim2.new(0, 50, 0, 42) 
--- Ancorando o CENTRO (mecanismo universal do Roblox)
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
--- O 0.5 garante a metade da tela, e -206, -220 garante a posição exata
-toggleOpenBtn.Position = UDim2.new(0.5, -206, 0.5, -220) 
+-- Posição no centro exato da tela (0.5, 0.5)
+toggleOpenBtn.Position = UDim2.new(0.5, 0, 0.5, 0) 
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
