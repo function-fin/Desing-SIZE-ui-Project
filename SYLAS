@@ -1,4 +1,4 @@
--- // SCREEN INSPECTOR & UI PROTOTYPER (Arcade Pixel + Borda Branca + Posição Ajustada)
+-- // SCREEN INSPECTOR & UI PROTOTYPER (Versão Corrigida e Estável)
 -- // Design Dark Minimalist + Mobile/PC Touch & Drag Support
 
 local Players = game:GetService("Players")
@@ -134,7 +134,7 @@ toggleOpenBtn.MouseButton1Click:Connect(function()
 end)
 
 -- // ==========================================
--- // 2. PAINEL INFERIOR: INFORMAÇÕES (Com Borda Branca e Arcade Pixel)
+-- // 2. PAINEL INFERIOR: INFORMAÇÕES
 -- // ==========================================
 local infoPanel = Instance.new("Frame")
 infoPanel.Name = "InfoSelectionPanel"
@@ -144,7 +144,7 @@ infoPanel.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
 infoPanel.BackgroundTransparency = 0.05
 infoPanel.Parent = uiContainer
 applyCorner(infoPanel, 10)
-applyStroke(infoPanel, Color3.fromRGB(255, 255, 255), 1.5) -- Borda Branca
+applyStroke(infoPanel, Color3.fromRGB(255, 255, 255), 1.5)
 
 makeDraggable(infoPanel, infoPanel)
 
@@ -154,8 +154,8 @@ infoTitle.Position = UDim2.new(0, 12, 0, 8)
 infoTitle.BackgroundTransparency = 1
 infoTitle.Text = "Informações da Seleção"
 infoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-infoTitle.Font = Enum.Font.Arcade
-infoTitle.TextSize = 14
+infoTitle.Font = Enum.Font.GothamBold
+infoTitle.TextSize = 13
 infoTitle.TextXAlignment = Enum.TextXAlignment.Left
 infoTitle.Parent = infoPanel
 
@@ -172,8 +172,8 @@ statsLabel.Size = UDim2.new(0, 125, 0, 60)
 statsLabel.Position = UDim2.new(0, 70, 0, 32)
 statsLabel.BackgroundTransparency = 1
 statsLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-statsLabel.Font = Enum.Font.Arcade
-statsLabel.TextSize = 13
+statsLabel.Font = Enum.Font.Code
+statsLabel.TextSize = 11
 statsLabel.TextXAlignment = Enum.TextXAlignment.Left
 statsLabel.TextYAlignment = Enum.TextYAlignment.Top
 statsLabel.RichText = true
@@ -193,8 +193,8 @@ statusTitle.Position = UDim2.new(0, 208, 0, 34)
 statusTitle.BackgroundTransparency = 1
 statusTitle.Text = "Nenhuma Figura"
 statusTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-statusTitle.Font = Enum.Font.Arcade
-statusTitle.TextSize = 13
+statusTitle.Font = Enum.Font.GothamBold
+statusTitle.TextSize = 12
 statusTitle.Parent = infoPanel
 
 local statusDesc = Instance.new("TextLabel")
@@ -203,15 +203,15 @@ statusDesc.Position = UDim2.new(0, 208, 0, 52)
 statusDesc.BackgroundTransparency = 1
 statusDesc.Text = "Clique ao lado para criar."
 statusDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
-statusDesc.Font = Enum.Font.Arcade
-statusDesc.TextSize = 11
+statusDesc.Font = Enum.Font.Code
+statusDesc.TextSize = 10
 statusDesc.TextWrapped = true
 statusDesc.TextXAlignment = Enum.TextXAlignment.Left
 statusDesc.TextYAlignment = Enum.TextYAlignment.Top
 statusDesc.Parent = infoPanel
 
 -- // ==========================================
--- // 3. PAINEL DIREITO: SCREEN INSPECTOR (+10% Tamanho, Borda Branca, Arcade Pixel)
+-- // 3. PAINEL DIREITO: SCREEN INSPECTOR (+10% Tamanho)
 -- // ==========================================
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "ScreenInspectorPanel"
@@ -221,7 +221,7 @@ mainPanel.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
 mainPanel.BackgroundTransparency = 0.04
 mainPanel.Parent = uiContainer
 applyCorner(mainPanel, 12)
-applyStroke(mainPanel, Color3.fromRGB(255, 255, 255), 1.5) -- Borda Branca
+applyStroke(mainPanel, Color3.fromRGB(255, 255, 255), 1.5)
 
 makeDraggable(mainPanel, mainPanel)
 
@@ -231,8 +231,8 @@ headerTitle.Position = UDim2.new(0, 0, 0, 6)
 headerTitle.BackgroundTransparency = 1
 headerTitle.Text = "Screen Inspector"
 headerTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-headerTitle.Font = Enum.Font.Arcade
-headerTitle.TextSize = 16
+headerTitle.Font = Enum.Font.GothamBold
+headerTitle.TextSize = 14
 headerTitle.Parent = mainPanel
 
 local subBox = Instance.new("Frame")
@@ -248,8 +248,8 @@ subText.Position = UDim2.new(0, 6, 0, 0)
 subText.BackgroundTransparency = 1
 subText.Text = "Adicione figuras na tela para capturar coordenadas."
 subText.TextColor3 = Color3.fromRGB(200, 200, 200)
-subText.Font = Enum.Font.Arcade
-subText.TextSize = 11
+subText.Font = Enum.Font.Code
+subText.TextSize = 10
 subText.TextWrapped = true
 subText.TextXAlignment = Enum.TextXAlignment.Left
 subText.Parent = subBox
@@ -261,8 +261,8 @@ toolsLabel.Position = UDim2.new(0, 10, 0, 76)
 toolsLabel.BackgroundTransparency = 1
 toolsLabel.Text = "Ferramentas"
 toolsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-toolsLabel.Font = Enum.Font.Arcade
-toolsLabel.TextSize = 14
+toolsLabel.Font = Enum.Font.GothamBold
+toolsLabel.TextSize = 12
 toolsLabel.TextXAlignment = Enum.TextXAlignment.Left
 toolsLabel.Parent = mainPanel
 
@@ -304,8 +304,8 @@ local function createToolCard(name, posX, shapeType)
     lbl.BackgroundTransparency = 1
     lbl.Text = name
     lbl.TextColor3 = Color3.fromRGB(230, 230, 230)
-    lbl.Font = Enum.Font.Arcade
-    lbl.TextSize = 12
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 11
     lbl.Parent = btn
 
     toolButtons[shapeType] = stroke
@@ -323,8 +323,8 @@ ctrlLabel.Position = UDim2.new(0, 10, 0, 156)
 ctrlLabel.BackgroundTransparency = 1
 ctrlLabel.Text = "Controles"
 ctrlLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-ctrlLabel.Font = Enum.Font.Arcade
-ctrlLabel.TextSize = 14
+ctrlLabel.Font = Enum.Font.GothamBold
+ctrlLabel.TextSize = 12
 ctrlLabel.TextXAlignment = Enum.TextXAlignment.Left
 ctrlLabel.Parent = mainPanel
 
@@ -337,8 +337,8 @@ local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChang
     lbl.BackgroundTransparency = 1
     lbl.Text = labelText
     lbl.TextColor3 = Color3.fromRGB(210, 210, 210)
-    lbl.Font = Enum.Font.Arcade
-    lbl.TextSize = 12
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = mainPanel
 
@@ -371,8 +371,8 @@ local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChang
     valBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     valBox.Text = tostring(defaultVal)
     valBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    valBox.Font = Enum.Font.Arcade
-    valBox.TextSize = 12
+    valBox.Font = Enum.Font.Code
+    valBox.TextSize = 11
     valBox.Parent = mainPanel
     applyCorner(valBox, 4)
     applyStroke(valBox, Color3.fromRGB(255, 255, 255), 1)
@@ -445,8 +445,8 @@ local function createToggleRow(text, posY, callback, initialState)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
     lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
-    lbl.Font = Enum.Font.Arcade
-    lbl.TextSize = 12
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = mainPanel
 
@@ -566,8 +566,8 @@ local function createShape(shapeType)
     topTag.Position = UDim2.new(0.5, -30, 0, -22)
     topTag.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
     topTag.TextColor3 = Color3.fromRGB(255, 255, 255)
-    topTag.Font = Enum.Font.Arcade
-    topTag.TextSize = 11
+    topTag.Font = Enum.Font.Code
+    topTag.TextSize = 10
     topTag.Parent = frame
     applyCorner(topTag, 4)
     applyStroke(topTag, Color3.fromRGB(255, 255, 255), 1)
@@ -577,8 +577,8 @@ local function createShape(shapeType)
     bottomTag.Position = UDim2.new(0.5, -18, 1, 6)
     bottomTag.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
     bottomTag.TextColor3 = Color3.fromRGB(255, 255, 255)
-    bottomTag.Font = Enum.Font.Arcade
-    bottomTag.TextSize = 11
+    bottomTag.Font = Enum.Font.Code
+    bottomTag.TextSize = 10
     bottomTag.Parent = frame
     applyCorner(bottomTag, 4)
 
@@ -587,8 +587,8 @@ local function createShape(shapeType)
     leftTag.Position = UDim2.new(0, -40, 0.5, -7.5)
     leftTag.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
     leftTag.TextColor3 = Color3.fromRGB(255, 255, 255)
-    leftTag.Font = Enum.Font.Arcade
-    leftTag.TextSize = 11
+    leftTag.Font = Enum.Font.Code
+    leftTag.TextSize = 10
     leftTag.Visible = (shapeType ~= "Circulo")
     leftTag.Parent = frame
     applyCorner(leftTag, 4)
