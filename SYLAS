@@ -1,11 +1,11 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
--- // Alinhamento corrigido: Centro exato (-206, -220) com tamanho 44x42
+-- // Sistema Universal: Escala Relativa (Scale) para transporte entre dispositivos
+-- // Botão externo configurado com base no centro relativo (-206, -220)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
-local GuiService = game:GetService("GuiService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -132,14 +132,24 @@ shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — Fixado no Centro (-206, -220) | 44x42
+-- // BOTÃO EXTERNO — Escala Relativa
+-- // A lógica aqui converte os pixels fixos (-206, -220) em escala (0-1)
+-- // para que ele sempre apareça na mesma posição proporcional em qualquer tela.
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
 toggleOpenBtn.Size = UDim2.new(0, 44, 0, 42) 
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
--- Posição usando o centro exato que você coletou na primeira vez
-toggleOpenBtn.Position = UDim2.new(0.5, -206, 0.5, -220) 
+
+-- Cálculo da Escala Universal
+-- Pegamos a tela atual e transformamos os offsets em frações da tela
+local vp = workspace.CurrentCamera.ViewportSize
+-- targetX = 0.5 + (-206 / largura)
+-- targetY = 0.5 + (-220 / altura)
+local scaleX = 0.5 + (-206 / vp.X)
+local scaleY = 0.5 + (-220 / vp.Y)
+
+toggleOpenBtn.Position = UDim2.new(scaleX, 0, scaleY, 0)
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
