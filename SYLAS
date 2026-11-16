@@ -29,6 +29,22 @@ gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 local ok = pcall(function() gui.Parent = CoreGui end)
 if not ok then gui.Parent = playerGui end
 
+-- =====================================================================
+-- ADAPTAÇÃO AUTOMÁTICA DE ESCALA (+70% NO PC, PADRÃO NO MOBILE)
+-- =====================================================================
+local uiScale = Instance.new("UIScale", gui)
+local function updateUIScale()
+    if not UserInputService.TouchEnabled then
+        uiScale.Scale = 1.7 -- Aumenta 70% no PC
+    else
+        uiScale.Scale = 1.0 -- Mantém tamanho padrão no mobile
+    end
+end
+updateUIScale()
+
+-- Atualiza escala se o dispositivo mudar (ex: notebook híbrido)
+UserInputService.LastInputTypeChanged:Connect(updateUIScale)
+
 local ARCADE = Enum.Font.Arcade
 
 -- // Estado
@@ -668,7 +684,7 @@ end
 
 -- // ==========================================
 -- // CRIAÇÃO DE FIGURA
--- // ==========================================
+-- ==========================================
 local function createShape(shapeType)
     local w, h = currentSize, currentSize
     if shapeType == "Retangulo" then
@@ -810,7 +826,7 @@ btnRetangulo.MouseButton1Click:Connect(function() createShape("Retangulo") end)
 
 -- // ==========================================
 -- // LOOP — ATUALIZAÇÃO EM TEMPO REAL
--- // ==========================================
+-- ==========================================
 local lastStatsText = ""
 
 RunService.RenderStepped:Connect(function()
