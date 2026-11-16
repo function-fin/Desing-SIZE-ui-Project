@@ -1,6 +1,6 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
 -- // Abordagem Roblox-Style: SafeInsets + Anchor Reference + Offset
--- // Botão externo centralizado para coleta de dados
+-- // + DIAGNÓSTICO DE COORDENADAS ADICIONADO
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -23,7 +23,6 @@ gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.DisplayOrder = 999999
 
--- // A MUDANÇA CRUCIAL DO SEU DOCUMENTO (Item 4 e 5)
 gui.IgnoreGuiInset = false
 gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 
@@ -58,7 +57,6 @@ local function round(n)
     return math.floor(n + 0.5)
 end
 
--- // Função de Arraste Robusta
 local function makeDraggable(dragHandle, targetFrame)
     local dragging = false
     local dragStartPos = Vector2.new(0, 0)
@@ -92,22 +90,70 @@ local function makeDraggable(dragHandle, targetFrame)
     end)
 end
 
--- // Função de Coordenadas com Referência de Anchor (Item 5 do Documento)
-local function getShapeReference(frame)
+local function getShapeCoords(frame)
     local absPos = frame.AbsolutePosition
     local absSize = frame.AbsoluteSize
-    local anchor = frame.AnchorPoint
+    local vp = workspace.CurrentCamera.ViewportSize
     
-    -- Simulando a extração das bordas do Safe Area
-    local topLeftX = absPos.X
-    local topLeftY = absPos.Y
-    
-    -- Cálculo do Centro Geométrico (independente da âncora)
-    local centerX = topLeftX + (absSize.X / 2)
-    local centerY = topLeftY + (absSize.Y / 2)
-    
-    -- No futuro, aqui você pode enviar esses dados (Anchor + Offset) para fora
-    return topLeftX, topLeftY, absSize.X, absSize.Y, centerX, centerY, anchor
+    local cX = vp.X / 2
+    local cY = vp.Y / 2
+
+    local w = absSize.X
+    local h = absSize.Y
+
+    local relX = absPos.X - cX
+    local relY = absPos.Y - cY
+
+    local cx = relX + (w / 2)
+    local cy = relY + (h / 2)
+
+    return relX, relY, w, h, cx, cy
+end
+
+-- ==========================================
+-- // DIAGNÓSTICO DE COORDENADAS
+-- ==========================================
+local function compareShapeCoordinates(frame)
+    local camera = workspace.CurrentCamera
+
+    if not camera or not frame then
+        warn("Câmera ou figura não encontrada.")
+        return
+    end
+
+    local viewport = camera.ViewportSize
+    local position = frame.AbsolutePosition
+    local size = frame.AbsoluteSize
+
+    local centerX = viewport.X / 2
+    local centerY = viewport.Y / 2
+
+    local relativeX = position.X - centerX
+    local relativeY = position.Y - centerY
+
+    print("========== SCREEN INSPECTOR ==========")
+
+    print("VIEWPORT:")
+    print("Largura:", viewport.X)
+    print("Altura:", viewport.Y)
+
+    print("POSIÇÃO REAL DA FIGURA:")
+    print("X:", position.X)
+    print("Y:", position.Y)
+
+    print("DIMENSÕES REAIS:")
+    print("Largura:", size.X)
+    print("Altura:", size.Y)
+
+    print("POSIÇÃO RELATIVA AO CENTRO:")
+    print("X:", relativeX)
+    print("Y:", relativeY)
+
+    print("CENTRO DA FIGURA:")
+    print("X:", position.X + size.X / 2 - centerX)
+    print("Y:", position.Y + size.Y / 2 - centerY)
+
+    print("======================================")
 end
 
 local function getTypeName(t)
@@ -549,6 +595,10 @@ end
 local function selectShape(shapeData)
     selectedShape = shapeData
     showHandles(shapeData)
+    -- Executa o diagnóstico ao selecionar
+    if shapeData and shapeData.Frame then
+        compareShapeCoordinates(shapeData.Frame)
+    end
 end
 
 local function deselectShape()
@@ -787,13 +837,12 @@ RunService.RenderStepped:Connect(function()
     end
 
     if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
-        local topLeftX, topLeftY, w, h, cx, cy, anchor = getShapeReference(selectedShape.Frame)
+        local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
         local tipoNome = getTypeName(selectedShape.Type)
 
-        -- Exibição agora mostra a referência de canto e o centro
         local newText = string.format(
             "Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
-            tipoNome, round(topLeftX), round(topLeftY), round(w), round(h), round(cx), round(cy)
+            tipoNome, round(rx), round(ry), round(w), round(h), round(cx), round(cy)
         )
 
         if newText ~= lastStatsText then
