@@ -1,6 +1,6 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER
 -- // Abordagem Roblox-Style: SafeInsets + Anchor Reference + Offset
--- // + DIAGNÓSTICO DE COORDENADAS ADICIONADO
+-- // Botão externo fixado no Centro (-212, -202) | Tamanho 49x51
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -132,27 +132,21 @@ local function compareShapeCoordinates(frame)
     local relativeY = position.Y - centerY
 
     print("========== SCREEN INSPECTOR ==========")
-
     print("VIEWPORT:")
     print("Largura:", viewport.X)
     print("Altura:", viewport.Y)
-
     print("POSIÇÃO REAL DA FIGURA:")
     print("X:", position.X)
     print("Y:", position.Y)
-
     print("DIMENSÕES REAIS:")
     print("Largura:", size.X)
     print("Altura:", size.Y)
-
     print("POSIÇÃO RELATIVA AO CENTRO:")
     print("X:", relativeX)
     print("Y:", relativeY)
-
     print("CENTRO DA FIGURA:")
     print("X:", position.X + size.X / 2 - centerX)
     print("Y:", position.Y + size.Y / 2 - centerY)
-
     print("======================================")
 end
 
@@ -178,13 +172,13 @@ shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // BOTÃO EXTERNO — No Centro da Tela para coleta
+-- // BOTÃO EXTERNO — Fixado no Centro (-212, -202) | 49x51
 -- // ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
-toggleOpenBtn.Size = UDim2.new(0, 44, 0, 42) 
+toggleOpenBtn.Size = UDim2.new(0, 49, 0, 51) 
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleOpenBtn.Position = UDim2.new(0.5, 0, 0.5, 0) 
+toggleOpenBtn.Position = UDim2.new(0.5, -212, 0.5, -202) 
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
@@ -595,7 +589,6 @@ end
 local function selectShape(shapeData)
     selectedShape = shapeData
     showHandles(shapeData)
-    -- Executa o diagnóstico ao selecionar
     if shapeData and shapeData.Frame then
         compareShapeCoordinates(shapeData.Frame)
     end
