@@ -1,7 +1,9 @@
+-- // SCREEN INSPECTOR & UI PROTOTYPER (Ajustado & Otimizado)
+-- // Design Dark Minimalist + Mobile/PC Touch & Drag Support
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -9,31 +11,21 @@ local playerGui = player:WaitForChild("PlayerGui")
 if playerGui:FindFirstChild("ScreenInspectorPro") then
     playerGui.ScreenInspectorPro:Destroy()
 end
-if CoreGui:FindFirstChild("ScreenInspectorPro") then
-    CoreGui.ScreenInspectorPro:Destroy()
-end
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "ScreenInspectorPro"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.DisplayOrder = 999999 -- Prioridade máxima para ficar acima de tudo
-
--- Tenta injetar no CoreGui (acima do PlayerGui), com fallback seguro
-local success = pcall(function()
-    gui.Parent = CoreGui
-end)
-if not success then
-    gui.Parent = playerGui
-end
+gui.DisplayOrder = 500 -- Acima do jogo, mas respeitando o Delta
+gui.Parent = playerGui
 
 -- // Estado Global
 local shapes = {}
 local selectedShape = nil
 local currentSize = 100
 local currentThickness = 3
-local dragLocked = false -- Estado para travar/frizar o arraste
+local dragLocked = false
 local visibilityState = {
     Quadrado = true,
     Circulo = true,
@@ -57,13 +49,13 @@ local function applyStroke(obj, color, thickness)
     return s
 end
 
--- // Função Universal de Arrastar (Respeita o bloqueio dragLocked)
+-- // Função Universal de Arrastar
 local function makeDraggable(dragHandle, targetFrame, onSelectCallback)
     local dragging = false
     local dragInput, dragStart, startPos
 
     dragHandle.InputBegan:Connect(function(input)
-        if dragLocked then return end -- Se estiver travado, ignora o toque de arrastar
+        if dragLocked then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
@@ -86,7 +78,7 @@ local function makeDraggable(dragHandle, targetFrame, onSelectCallback)
 
     UserInputService.InputChanged:Connect(function(input)
         if not dragLocked and input == dragInput and dragging then
-            local delta = input.Position - dragStart
+            local delta = input.Position - startMouse or (input.Position - dragStart)
             targetFrame.Position = UDim2.new(
                 startPos.X.Scale,
                 startPos.X.Offset + delta.X,
@@ -111,17 +103,14 @@ shapesLayer.BackgroundTransparency = 1
 shapesLayer.Parent = gui
 
 -- // ==========================================
--- // 1. BOTÃO EXTERNO ARRASTÁVEL (ABRIR/FECHAR)
+-- // 1. BOTÃO EXTERNO (ID 132397280170762)
 -- // ==========================================
-local toggleOpenBtn = Instance.new("TextButton")
+local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "ExternalToggleBtn"
 toggleOpenBtn.Size = UDim2.new(0, 36, 0, 36)
-toggleOpenBtn.Position = UDim2.new(0, 140, 0, 12)
+toggleOpenBtn.Position = UDim2.new(0, 142, 0, 10) -- Posição exata na barra superior[cite: 5]
 toggleOpenBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-toggleOpenBtn.Text = "⌖"
-toggleOpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleOpenBtn.Font = Enum.Font.GothamBold
-toggleOpenBtn.TextSize = 18
+toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
 toggleOpenBtn.Parent = gui
 applyCorner(toggleOpenBtn, 10)
@@ -136,7 +125,7 @@ toggleOpenBtn.MouseButton1Click:Connect(function()
 end)
 
 -- // ==========================================
--- // 2. PAINEL INFERIOR: INFORMAÇÕES (Compacto)
+-- // 2. PAINEL INFERIOR: INFORMAÇÕES
 -- // ==========================================
 local infoPanel = Instance.new("Frame")
 infoPanel.Name = "InfoSelectionPanel"
@@ -192,7 +181,7 @@ vLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 vLine.BorderSizePixel = 0
 vLine.Parent = infoPanel
 
--- Status
+-- Status (Atualizado dinamicamente)
 local statusTitle = Instance.new("TextLabel")
 statusTitle.Size = UDim2.new(0, 95, 0, 18)
 statusTitle.Position = UDim2.new(0, 208, 0, 34)
@@ -217,7 +206,7 @@ statusDesc.TextYAlignment = Enum.TextYAlignment.Top
 statusDesc.Parent = infoPanel
 
 -- // ==========================================
--- // 3. PAINEL DIREITO: SCREEN INSPECTOR (Compacto)
+-- // 3. PAINEL DIREITO: SCREEN INSPECTOR
 -- // ==========================================
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "ScreenInspectorPanel"
@@ -322,7 +311,7 @@ local btnQuadrado = createToolCard("Quadrado", 10, "Quadrado")
 local btnCirculo = createToolCard("Círculo", 76, "Circulo")
 local btnRetangulo = createToolCard("Retângulo", 142, "Retangulo")
 
--- Sliders de Controle
+-- Sliders
 local ctrlLabel = Instance.new("TextLabel")
 ctrlLabel.Size = UDim2.new(1, -16, 0, 18)
 ctrlLabel.Position = UDim2.new(0, 10, 0, 146)
@@ -443,7 +432,7 @@ thickSliderUpdate = createSlider("Espessura:", 192, 1, 15, 3, function(val)
     end
 end)
 
--- Toggles (Mostrar Figuras e Bloquear Arraste)
+-- Toggles
 local function createToggleRow(text, posY, callback, initialState)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(0, 130, 0, 18)
@@ -503,13 +492,12 @@ createToggleRow("Mostrar Retângulo", 258, function(active)
     end
 end, true)
 
--- Novo Toggle: Bloquear Arraste
 createToggleRow("Bloquear Arraste", 278, function(active)
     dragLocked = active
 end, false)
 
 -- // ==========================================
--- // 4. SISTEMA DE CRIAÇÃO E REDIMENSIONAMENTO
+-- // 4. SISTEMA DE SELEÇÃO E CRIAÇÃO
 -- // ==========================================
 local function selectShape(shapeData)
     selectedShape = shapeData
@@ -533,8 +521,12 @@ local function selectShape(shapeData)
     if shapeData then
         previewCorner.CornerRadius = (shapeData.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
         previewStroke.Thickness = shapeData.Stroke.Thickness
-        statusTitle.Text = "Figura Ativa!"
-        statusDesc.Text = "Arraste os cantos."
+        
+        -- Atualiza dinamicamente o status com o nome correto da figura ativa[cite: 5]
+        local tipoNome = shapeData.Type == "Circulo" and "Círculo" or (shapeData.Type == "Retangulo" and "Retângulo" or "Quadrado")
+        statusTitle.Text = tipoNome .. " Ativo"
+        statusDesc.Text = "Manuseando na tela."
+        
         sizeSliderUpdate(shapeData.Frame.AbsoluteSize.X)
         thickSliderUpdate(shapeData.Stroke.Thickness)
     else
