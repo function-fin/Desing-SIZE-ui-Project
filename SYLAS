@@ -1,6 +1,6 @@
 -- // SCREEN INSPECTOR & UI PROTOTYPER — Builder GUI Beta (Manager-integrated)
 -- // Abordagem Roblox-Style: SafeInsets + Anchor Reference + Offset
--- // + Detecção universal de UI (Clicar nos painéis/botão mostra os dados)
+-- // + Detecção universal de UI e Botão ajustado para (-210, -155) | 50x50
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -54,7 +54,7 @@ local ARCADE = Enum.Font.Arcade
 -- // Estado
 local shapes = {}
 local selectedShape = nil
-local selectedUI = nil -- NOVO: Guarda qual painel/botão foi clicado
+local selectedUI = nil
 local currentSize = 100
 local currentThickness = 3
 local dragLocked = false
@@ -84,7 +84,6 @@ local function makeDraggable(dragHandle, targetFrame, onDragBegin)
     dragHandle.InputBegan:Connect(function(input)
         if dragLocked then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            -- NOVO: Atualiza a seleção ao clicar na UI
             if onDragBegin then onDragBegin(targetFrame) end
             
             dragging = true
@@ -143,13 +142,14 @@ shapesLayer.ZIndex = 1
 shapesLayer.Parent = gui
 
 -- ==========================================
--- // BOTÃO EXTERNO — AJUSTADO PARA (-265, -164) | 50x50
+-- // BOTÃO EXTERNO — AJUSTADO PARA (-210, -155) | 50x50
 -- ==========================================
 local toggleOpenBtn = Instance.new("ImageButton")
 toggleOpenBtn.Name = "OpenToggleButton"
 toggleOpenBtn.Size = UDim2.new(0, 50, 0, 50)
 toggleOpenBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleOpenBtn.Position = UDim2.new(0.5, -265, 0.5, -164)
+-- Posição Central Exata
+toggleOpenBtn.Position = UDim2.new(0.5, -210, 0.5, -155)
 toggleOpenBtn.BackgroundTransparency = 1
 toggleOpenBtn.Image = "rbxassetid://132397280170762"
 toggleOpenBtn.ZIndex = 100
@@ -208,7 +208,6 @@ infoPanel.Parent = uiContainer
 applyCorner(infoPanel, 10)
 applyStroke(infoPanel, Color3.fromRGB(255, 255, 255), 1.2)
 
--- Aplica o arrasto e a seleção no painel de informação
 makeDraggable(infoPanel, infoPanel, selectUI)
 
 local infoTitle = Instance.new("TextLabel")
@@ -287,7 +286,6 @@ mainPanel.Parent = uiContainer
 applyCorner(mainPanel, 12)
 applyStroke(mainPanel, Color3.fromRGB(255, 255, 255), 1.2)
 
--- Aplica o arrasto e a seleção no painel principal
 makeDraggable(mainPanel, mainPanel, selectUI)
 
 -- SOL ÍCONE
@@ -595,7 +593,7 @@ end
 
 local function selectShape(shapeData)
     selectedShape = shapeData
-    selectedUI = nil -- Limpa a seleção de UI
+    selectedUI = nil
     showHandles(shapeData)
 end
 
@@ -804,7 +802,6 @@ btnRetangulo.MouseButton1Click:Connect(function() createShape("Retangulo") end)
 local lastStatsText = ""
 
 RunService.RenderStepped:Connect(function()
-    -- Atualiza as tags das figuras normais
     for _, s in ipairs(shapes) do
         if s.Frame and s.Frame.Parent then
             local w = math.floor(s.Frame.AbsoluteSize.X)
@@ -820,7 +817,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Atualiza a UI de informações. Prioriza a figura, mas se não tiver, mostra a UI.
     local targetFrame = nil
     local typeStr = "Nenhum"
 
@@ -829,7 +825,7 @@ RunService.RenderStepped:Connect(function()
         typeStr = selectedShape.Type
     elseif selectedUI and selectedUI.Parent then
         targetFrame = selectedUI
-        typeStr = "UI" -- Tipo especial para interface
+        typeStr = "UI"
     end
 
     if targetFrame then
@@ -853,7 +849,6 @@ RunService.RenderStepped:Connect(function()
             previewCorner.CornerRadius = (selectedShape.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
             previewStroke.Thickness = selectedShape.Stroke.Thickness
         else
-            -- Ajusta o preview para ser quadrado se for UI
             previewCorner.CornerRadius = UDim.new(0, 4)
             previewStroke.Thickness = 1.5
         end
