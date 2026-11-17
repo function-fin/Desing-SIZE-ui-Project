@@ -1,3 +1,7 @@
+-- // SCREEN INSPECTOR & UI PROTOTYPER — Builder GUI Beta (Manager-integrated)
+-- // Abordagem Roblox-Style: SafeInsets + Anchor Reference + Offset
+-- // + Detecção universal de UI (Clicar nos painéis/botão mostra os dados)
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -27,7 +31,7 @@ gui:SetAttribute("SPWN_ManagedScriptID", "ScreenInspectorPro_001")
 gui:SetAttribute("SPWN_ManagedScriptName", "Screen Inspector & UI Prototyper")
 gui:SetAttribute("SPWN_ManagedScriptCategory", "BUILDER")
 
--- Parent correto (Manager procura em CoreGui ou PlayerGui)
+-- Parent correto
 local ok = pcall(function() gui.Parent = CoreGui end)
 if not ok then gui.Parent = playerGui end
 
@@ -50,6 +54,7 @@ local ARCADE = Enum.Font.Arcade
 -- // Estado
 local shapes = {}
 local selectedShape = nil
+local selectedUI = nil -- NOVO: Guarda qual painel/botão foi clicado
 local currentSize = 100
 local currentThickness = 3
 local dragLocked = false
@@ -71,7 +76,7 @@ end
 
 local function round(n) return math.floor(n + 0.5) end
 
-local function makeDraggable(dragHandle, targetFrame)
+local function makeDraggable(dragHandle, targetFrame, onDragBegin)
     local dragging = false
     local dragStartPos = Vector2.new(0, 0)
     local startPos = UDim2.new(0, 0, 0, 0)
@@ -79,6 +84,9 @@ local function makeDraggable(dragHandle, targetFrame)
     dragHandle.InputBegan:Connect(function(input)
         if dragLocked then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            -- NOVO: Atualiza a seleção ao clicar na UI
+            if onDragBegin then onDragBegin(targetFrame) end
+            
             dragging = true
             dragStartPos = input.Position
             startPos = targetFrame.Position
@@ -112,26 +120,10 @@ local function getShapeCoords(frame)
     return relX, relY, w, h, cx, cy
 end
 
-local function compareShapeCoordinates(frame)
-    local camera = workspace.CurrentCamera
-    if not camera or not frame then warn("Câmera ou figura não encontrada.") return end
-    local viewport = camera.ViewportSize
-    local position = frame.AbsolutePosition
-    local size = frame.AbsoluteSize
-    local centerX, centerY = viewport.X / 2, viewport.Y / 2
-    local relativeX, relativeY = position.X - centerX, position.Y - centerY
-    print("========== SCREEN INSPECTOR ==========")
-    print("VIEWPORT:", viewport.X, viewport.Y)
-    print("POSIÇÃO REAL:", position.X, position.Y)
-    print("DIMENSÕES:", size.X, size.Y)
-    print("RELATIVO AO CENTRO:", relativeX, relativeY)
-    print("CENTRO DA FIGURA:", position.X + size.X / 2 - centerX, position.Y + size.Y / 2 - centerY)
-    print("======================================")
-end
-
 local function getTypeName(t)
     if t == "Circulo" then return "Círculo" end
     if t == "Retangulo" then return "Retângulo" end
+    if t == "UI" then return "Interface" end
     return "Quadrado"
 end
 
@@ -164,7 +156,14 @@ toggleOpenBtn.ZIndex = 100
 toggleOpenBtn.Active = true
 toggleOpenBtn.Parent = gui
 
-makeDraggable(toggleOpenBtn, toggleOpenBtn)
+-- Função que registra a seleção da UI
+local function selectUI(frame)
+    selectedShape = nil
+    selectedUI = frame
+end
+
+-- Aplica o arrasto e a seleção no botão externo
+makeDraggable(toggleOpenBtn, toggleOpenBtn, selectUI)
 
 local isOpen = false
 local bPressPos, bPressTime, bMoved = nil, 0, false
@@ -208,7 +207,9 @@ infoPanel.ZIndex = 50
 infoPanel.Parent = uiContainer
 applyCorner(infoPanel, 10)
 applyStroke(infoPanel, Color3.fromRGB(255, 255, 255), 1.2)
-makeDraggable(infoPanel, infoPanel)
+
+-- Aplica o arrasto e a seleção no painel de informação
+makeDraggable(infoPanel, infoPanel, selectUI)
 
 local infoTitle = Instance.new("TextLabel")
 infoTitle.Size = UDim2.new(1, -20, 0, 20)
@@ -252,7 +253,7 @@ local statusTitle = Instance.new("TextLabel")
 statusTitle.Size = UDim2.new(0, 95, 0, 18)
 statusTitle.Position = UDim2.new(0, 208, 0, 34)
 statusTitle.BackgroundTransparency = 1
-statusTitle.Text = "Nenhuma Figura"
+statusTitle.Text = "Nenhuma Seleção"
 statusTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 statusTitle.Font = ARCADE
 statusTitle.TextSize = 11
@@ -262,7 +263,7 @@ local statusDesc = Instance.new("TextLabel")
 statusDesc.Size = UDim2.new(0, 95, 0, 38)
 statusDesc.Position = UDim2.new(0, 208, 0, 52)
 statusDesc.BackgroundTransparency = 1
-statusDesc.Text = "Clique para criar."
+statusDesc.Text = "Clique na interface."
 statusDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
 statusDesc.Font = ARCADE
 statusDesc.TextSize = 9.5
@@ -285,7 +286,9 @@ mainPanel.ZIndex = 50
 mainPanel.Parent = uiContainer
 applyCorner(mainPanel, 12)
 applyStroke(mainPanel, Color3.fromRGB(255, 255, 255), 1.2)
-makeDraggable(mainPanel, mainPanel)
+
+-- Aplica o arrasto e a seleção no painel principal
+makeDraggable(mainPanel, mainPanel, selectUI)
 
 -- SOL ÍCONE
 local sunIcon = Instance.new("ImageLabel")
@@ -312,7 +315,7 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- TÍTULO CENTRALIZADO (Ajustado para não sobrepor os ícones)
+-- TÍTULO CENTRALIZADO
 local headerTitle = Instance.new("TextLabel")
 headerTitle.Size = UDim2.new(1, -80, 0, 30)
 headerTitle.Position = UDim2.new(0, 40, 0, 10)
@@ -326,7 +329,7 @@ headerTitle.Parent = mainPanel
 
 local subBox = Instance.new("Frame")
 subBox.Size = UDim2.new(1, -16, 0, 34)
-subBox.Position = UDim2.new(0, 8, 0, 46) -- Empurrado um pouco para baixo para dar espaço ao topo
+subBox.Position = UDim2.new(0, 8, 0, 46) 
 subBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 subBox.Parent = mainPanel
 applyCorner(subBox, 6)
@@ -335,7 +338,7 @@ local subText = Instance.new("TextLabel")
 subText.Size = UDim2.new(1, -12, 1, 0)
 subText.Position = UDim2.new(0, 6, 0, 0)
 subText.BackgroundTransparency = 1
-subText.Text = "Adicione figuras na tela para capturar coordenadas."
+subText.Text = "Adicione figuras na tela ou clique nos painéis para capturar coordenadas."
 subText.TextColor3 = Color3.fromRGB(200, 200, 200)
 subText.Font = ARCADE
 subText.TextSize = 10
@@ -345,7 +348,7 @@ subText.Parent = subBox
 
 local toolsLabel = Instance.new("TextLabel")
 toolsLabel.Size = UDim2.new(1, -16, 0, 20)
-toolsLabel.Position = UDim2.new(0, 10, 0, 86) -- Empurrado para baixo
+toolsLabel.Position = UDim2.new(0, 10, 0, 86)
 toolsLabel.BackgroundTransparency = 1
 toolsLabel.Text = "Ferramentas"
 toolsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -359,7 +362,7 @@ local toolButtons = {}
 local function createToolCard(name, posX, shapeType)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 68, 0, 52)
-    btn.Position = UDim2.new(0, posX, 0, 108) -- Empurrado para baixo
+    btn.Position = UDim2.new(0, posX, 0, 108)
     btn.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
     btn.Text = ""
     btn.AutoButtonColor = false
@@ -406,7 +409,7 @@ local btnRetangulo = createToolCard("Retângulo", 158, "Retangulo")
 
 local ctrlLabel = Instance.new("TextLabel")
 ctrlLabel.Size = UDim2.new(1, -16, 0, 20)
-ctrlLabel.Position = UDim2.new(0, 10, 0, 166) -- Empurrado para baixo
+ctrlLabel.Position = UDim2.new(0, 10, 0, 166)
 ctrlLabel.BackgroundTransparency = 1
 ctrlLabel.Text = "Controles"
 ctrlLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -580,7 +583,7 @@ end, true)
 createToggleRow("Bloquear Arraste", 312, function(a) dragLocked = a end, false)
 
 -- // ==========================================
--- // SELEÇÃO E LÓGICA DE CLIQUE
+-- // SELEÇÃO E LÓGICA DE CLIQUE (FIGURAS)
 -- // ==========================================
 local function showHandles(shapeData)
     for _, s in ipairs(shapes) do
@@ -592,10 +595,8 @@ end
 
 local function selectShape(shapeData)
     selectedShape = shapeData
+    selectedUI = nil -- Limpa a seleção de UI
     showHandles(shapeData)
-    if shapeData and shapeData.Frame then
-        compareShapeCoordinates(shapeData.Frame)
-    end
 end
 
 local function deselectShape()
@@ -798,11 +799,12 @@ btnCirculo.MouseButton1Click:Connect(function() createShape("Circulo") end)
 btnRetangulo.MouseButton1Click:Connect(function() createShape("Retangulo") end)
 
 -- // ==========================================
--- // LOOP — ATUALIZAÇÃO EM TEMPO REAL
+-- // LOOP — ATUALIZAÇÃO EM TEMPO REAL (FIGURAS E UI)
 -- // ==========================================
 local lastStatsText = ""
 
 RunService.RenderStepped:Connect(function()
+    -- Atualiza as tags das figuras normais
     for _, s in ipairs(shapes) do
         if s.Frame and s.Frame.Parent then
             local w = math.floor(s.Frame.AbsoluteSize.X)
@@ -818,26 +820,48 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- Atualiza a UI de informações. Prioriza a figura, mas se não tiver, mostra a UI.
+    local targetFrame = nil
+    local typeStr = "Nenhum"
+
     if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
-        local rx, ry, w, h, cx, cy = getShapeCoords(selectedShape.Frame)
-        local tipoNome = getTypeName(selectedShape.Type)
+        targetFrame = selectedShape.Frame
+        typeStr = selectedShape.Type
+    elseif selectedUI and selectedUI.Parent then
+        targetFrame = selectedUI
+        typeStr = "UI" -- Tipo especial para interface
+    end
+
+    if targetFrame then
+        local rx, ry, w, h, cx, cy = getShapeCoords(targetFrame)
+        local tipoNome = getTypeName(typeStr)
+        
         local newText = string.format(
             "Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
             tipoNome, round(rx), round(ry), round(w), round(h), round(cx), round(cy)
         )
+        
         if newText ~= lastStatsText then
             statsLabel.Text = newText
             lastStatsText = newText
         end
-        statusTitle.Text = "Figura Ativa!"
+
+        statusTitle.Text = (typeStr == "UI") and "UI Ativa!" or "Figura Ativa!"
         statusDesc.Text = "Arraste p/ mover."
-        previewCorner.CornerRadius = (selectedShape.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
-        previewStroke.Thickness = selectedShape.Stroke.Thickness
+        
+        if typeStr ~= "UI" then
+            previewCorner.CornerRadius = (selectedShape.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
+            previewStroke.Thickness = selectedShape.Stroke.Thickness
+        else
+            -- Ajusta o preview para ser quadrado se for UI
+            previewCorner.CornerRadius = UDim.new(0, 4)
+            previewStroke.Thickness = 1.5
+        end
     else
         if lastStatsText ~= "" then
             statsLabel.Text = "Tipo: Nenhum\nPos: 0, 0\nTam: 0, 0\nCentro: 0, 0"
-            statusTitle.Text = "Nenhuma Figura"
-            statusDesc.Text = "Clique na figura."
+            statusTitle.Text = "Nenhuma Seleção"
+            statusDesc.Text = "Clique para criar."
             previewStroke.Thickness = 1.5
             lastStatsText = ""
         end
