@@ -20,7 +20,7 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "ScreenInspectorPro"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.DisplayOrder = 0 -- AJUSTE AQUI: Força ficar atrás do menu principal
+gui.DisplayOrder = 0 
 gui.IgnoreGuiInset = false
 gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 
@@ -76,6 +76,57 @@ end
 
 local function round(n) return math.floor(n + 0.5) end
 
+-- =====================================================================
+-- NOVA LÓGICA: CENTER-BASED COORDINATE SYSTEM
+-- =====================================================================
+
+-- Função para obter coordenadas baseadas no centro
+local function getShapeCoords(frame)
+    local absPos = frame.AbsolutePosition
+    local absSize = frame.AbsoluteSize
+    local vp = workspace.CurrentCamera.ViewportSize
+    local cX, cY = vp.X / 2, vp.Y / 2
+    
+    -- Centro absoluto da figura na tela
+    local centerX = absPos.X + (absSize.X / 2)
+    local centerY = absPos.Y + (absSize.Y / 2)
+
+    -- Coordenadas relativas ao centro da tela (como no script original)
+    local relX = centerX - cX
+    local relY = centerY - cY
+    
+    return {
+        CenterAbsolute = Vector2.new(centerX, centerY),
+        RelativeCenter = Vector2.new(relX, relY),
+        Size = absSize,
+        W = absSize.X,
+        H = absSize.Y
+    }
+end
+
+-- Função para mover a figura para um centro específico
+-- targetCenter: Vector2 (ex: Vector2.new(0, 0) para o centro da tela)
+local function moveShapeToCenter(shapeData, targetCenter)
+    if not shapeData or not shapeData.Frame or not shapeData.Frame.Parent then return end
+    
+    local frame = shapeData.Frame
+    local size = frame.AbsoluteSize
+    local vp = workspace.CurrentCamera.ViewportSize
+    
+    -- Converte o centro alvo (relativo à tela) para a posição Top-Left
+    local absTargetX = (vp.X / 2) + targetCenter.X
+    local absTargetY = (vp.Y / 2) + targetCenter.Y
+    
+    -- Calcula a nova posição Top-Left baseada no centro alvo e no tamanho atual
+    local newPosX = absTargetX - (size.X / 2)
+    local newPosY = absTargetY - (size.Y / 2)
+    
+    -- Aplica a nova posição (usando offset para precisão)
+    frame.Position = UDim2.new(0, newPosX, 0, newPosY)
+end
+
+-- =====================================================================
+
 local function makeDraggable(dragHandle, targetFrame, onDragBegin)
     local dragging = false
     local dragStartPos = Vector2.new(0, 0)
@@ -85,7 +136,6 @@ local function makeDraggable(dragHandle, targetFrame, onDragBegin)
         if dragLocked then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             if onDragBegin then onDragBegin(targetFrame) end
-            
             dragging = true
             dragStartPos = input.Position
             startPos = targetFrame.Position
@@ -106,17 +156,6 @@ local function makeDraggable(dragHandle, targetFrame, onDragBegin)
             end
         end
     end)
-end
-
-local function getShapeCoords(frame)
-    local absPos = frame.AbsolutePosition
-    local absSize = frame.AbsoluteSize
-    local vp = workspace.CurrentCamera.ViewportSize
-    local cX, cY = vp.X / 2, vp.Y / 2
-    local w, h = absSize.X, absSize.Y
-    local relX, relY = absPos.X - cX, absPos.Y - cY
-    local cx, cy = relX + (w / 2), relY + (h / 2)
-    return relX, relY, w, h, cx, cy
 end
 
 local function getTypeName(t)
@@ -211,7 +250,7 @@ local infoTitle = Instance.new("TextLabel")
 infoTitle.Size = UDim2.new(1, -20, 0, 20)
 infoTitle.Position = UDim2.new(0, 12, 0, 8)
 infoTitle.BackgroundTransparency = 1
-infoTitle.Text = "Informações da Seleção"
+infoTitle.Text = "Informações da Seleção (Centro)"
 infoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 infoTitle.Font = ARCADE
 infoTitle.TextSize = 12
@@ -235,7 +274,7 @@ statsLabel.Font = ARCADE
 statsLabel.TextSize = 10.5
 statsLabel.TextXAlignment = Enum.TextXAlignment.Left
 statsLabel.TextYAlignment = Enum.TextYAlignment.Top
-statsLabel.Text = "Tipo: Nenhum\nPos: 0, 0\nTam: 0, 0\nCentro: 0, 0"
+statsLabel.Text = "Tipo: Nenhum\nCentro Rel: 0, 0\nTam: 0, 0"
 statsLabel.Parent = infoPanel
 
 local vLine = Instance.new("Frame")
@@ -333,7 +372,7 @@ local subText = Instance.new("TextLabel")
 subText.Size = UDim2.new(1, -12, 1, 0)
 subText.Position = UDim2.new(0, 6, 0, 0)
 subText.BackgroundTransparency = 1
-subText.Text = "Adicione figuras na tela ou clique nos painéis para capturar coordenadas."
+subText.Text = "Coordenadas baseadas no centro da figura (Center-Based)."
 subText.TextColor3 = Color3.fromRGB(200, 200, 200)
 subText.Font = ARCADE
 subText.TextSize = 10
@@ -402,9 +441,34 @@ local btnQuadrado = createToolCard("Quadrado", 10, "Quadrado")
 local btnCirculo = createToolCard("Círculo", 84, "Circulo")
 local btnRetangulo = createToolCard("Retângulo", 158, "Retangulo")
 
+-- ==========================================
+-- BOTÃO DE TESTE: TELEPORTE PARA O CENTRO
+-- ==========================================
+local btnTeleport = Instance.new("TextButton")
+btnTeleport.Size = UDim2.new(1, -20, 0, 30)
+btnTeleport.Position = UDim2.new(0, 10, 0, 170) -- Ajuste a posição conforme necessário
+btnTeleport.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
+btnTeleport.Text = "Mover Seleção para o Centro"
+btnTeleport.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnTeleport.Font = ARCADE
+btnTeleport.TextSize = 11
+btnTeleport.Parent = mainPanel
+applyCorner(btnTeleport, 6)
+applyStroke(btnTeleport, Color3.fromRGB(100, 255, 100), 1)
+
+btnTeleport.MouseButton1Click:Connect(function()
+    if selectedShape then
+        -- Move para o centro exato da tela (0, 0 relativo)
+        moveShapeToCenter(selectedShape, Vector2.new(0, 0))
+    end
+end)
+
+-- // ==========================================
+-- // SLIDERS E CONTROLES (Mantidos, mas ajustados visualmente)
+-- // ==========================================
 local ctrlLabel = Instance.new("TextLabel")
 ctrlLabel.Size = UDim2.new(1, -16, 0, 20)
-ctrlLabel.Position = UDim2.new(0, 10, 0, 166)
+ctrlLabel.Position = UDim2.new(0, 10, 0, 210)
 ctrlLabel.BackgroundTransparency = 1
 ctrlLabel.Text = "Controles"
 ctrlLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -413,6 +477,7 @@ ctrlLabel.TextSize = 11.5
 ctrlLabel.TextXAlignment = Enum.TextXAlignment.Left
 ctrlLabel.Parent = mainPanel
 
+-- (O restante dos sliders e toggles permanece 
 local sizeSliderUpdate, thickSliderUpdate
 
 local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChange)
@@ -503,19 +568,29 @@ local function createSlider(labelText, posY, minVal, maxVal, defaultVal, onChang
     return setVisual
 end
 
-sizeSliderUpdate = createSlider("Tamanho:", 192, 20, 400, 100, function(val)
+sizeSliderUpdate = createSlider("Tamanho:", 236, 20, 400, 100, function(val)
     currentSize = val
     if selectedShape and selectedShape.Frame and selectedShape.Frame.Parent then
+        -- Para manter o centro, precisamos ajustar a posição ao redimensionar
+        local oldSize = selectedShape.Frame.AbsoluteSize
+        local center = getShapeCoords(selectedShape.Frame).CenterAbsolute
+        
         if selectedShape.Type == "Retangulo" then
             local ratio = selectedShape.Frame.Size.Y.Offset / math.max(1, selectedShape.Frame.Size.X.Offset)
             selectedShape.Frame.Size = UDim2.new(0, val, 0, math.max(20, math.floor(val * ratio)))
         else
             selectedShape.Frame.Size = UDim2.new(0, val, 0, val)
         end
+        
+        -- Recalcula a posição para manter o centro
+        local newSize = selectedShape.Frame.AbsoluteSize
+        local newPosX = center.X - (newSize.X / 2)
+        local newPosY = center.Y - (newSize.Y / 2)
+        selectedShape.Frame.Position = UDim2.new(0, newPosX, 0, newPosY)
     end
 end)
 
-thickSliderUpdate = createSlider("Espessura:", 218, 1, 15, 3, function(val)
+thickSliderUpdate = createSlider("Espessura:", 262, 1, 15, 3, function(val)
     currentThickness = val
     if selectedShape and selectedShape.Stroke then
         selectedShape.Stroke.Thickness = val
@@ -560,22 +635,20 @@ local function createToggleRow(text, posY, callback, initialState)
     end)
 end
 
-createToggleRow("Mostrar Quadrado", 246, function(a)
+createToggleRow("Mostrar Quadrado", 290, function(a)
     visibilityState["Quadrado"] = a
     for _, s in ipairs(shapes) do if s.Type == "Quadrado" then s.Frame.Visible = a end end
 end, true)
 
-createToggleRow("Mostrar Círculo", 268, function(a)
+createToggleRow("Mostrar Círculo", 312, function(a)
     visibilityState["Circulo"] = a
     for _, s in ipairs(shapes) do if s.Type == "Circulo" then s.Frame.Visible = a end end
 end, true)
 
-createToggleRow("Mostrar Retângulo", 290, function(a)
+createToggleRow("Mostrar Retângulo", 334, function(a)
     visibilityState["Retangulo"] = a
     for _, s in ipairs(shapes) do if s.Type == "Retangulo" then s.Frame.Visible = a end end
 end, true)
-
-createToggleRow("Bloquear Arraste", 312, function(a) dragLocked = a end, false)
 
 -- // ==========================================
 -- // SELEÇÃO E LÓGICA DE CLIQUE (FIGURAS)
@@ -670,6 +743,7 @@ local function createShape(shapeType)
     local frame = Instance.new("Frame")
     frame.Name = "Shape_" .. shapeType
     frame.Size = UDim2.new(0, w, 0, h)
+    -- Posição inicial centralizada
     frame.Position = UDim2.new(0.5, -w/2, 0.5, -h/2)
     frame.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
     frame.Visible = visibilityState[shapeType]
@@ -826,14 +900,18 @@ RunService.RenderStepped:Connect(function()
     end
 
     if targetFrame then
-        local rx, ry, w, h, cx, cy = getShapeCoords(targetFrame)
+        local coords = getShapeCoords(targetFrame)
         local tipoNome = getTypeName(typeStr)
-        
+
+        -- Agora exibindo o Centro Relativo (mais útil para o conceito Center-Based)
         local newText = string.format(
-            "Tipo: %s\nPos: %d, %d\nTam: %d, %d\nCentro: %d, %d",
-            tipoNome, round(rx), round(ry), round(w), round(h), round(cx), round(cy)
+            "Tipo: %s\nCentro Rel: %d, %d\nTam: %d, %d\nCentro Abs: %d, %d",
+            tipoNome, 
+            round(coords.RelativeCenter.X), round(coords.RelativeCenter.Y),
+            round(coords.W), round(coords.H),
+            round(coords.CenterAbsolute.X), round(coords.CenterAbsolute.Y)
         )
-        
+
         if newText ~= lastStatsText then
             statsLabel.Text = newText
             lastStatsText = newText
@@ -841,7 +919,7 @@ RunService.RenderStepped:Connect(function()
 
         statusTitle.Text = (typeStr == "UI") and "UI Ativa!" or "Figura Ativa!"
         statusDesc.Text = "Arraste p/ mover."
-        
+
         if typeStr ~= "UI" then
             previewCorner.CornerRadius = (selectedShape.Type == "Circulo") and UDim.new(1, 0) or UDim.new(0, 4)
             previewStroke.Thickness = selectedShape.Stroke.Thickness
@@ -851,7 +929,7 @@ RunService.RenderStepped:Connect(function()
         end
     else
         if lastStatsText ~= "" then
-            statsLabel.Text = "Tipo: Nenhum\nPos: 0, 0\nTam: 0, 0\nCentro: 0, 0"
+            statsLabel.Text = "Tipo: Nenhum\nCentro Rel: 0, 0\nTam: 0, 0\nCentro Abs: 0, 0"
             statusTitle.Text = "Nenhuma Seleção"
             statusDesc.Text = "Clique para criar."
             previewStroke.Thickness = 1.5
